@@ -1,5 +1,5 @@
 {
-  "name": "nextjs",
+  "name": "kreta-jan-luca-nextjs",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,7 +9,8 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "geist": "^1.7.2",
+    "@types/leaflet": "^1.9.21",
+    "leaflet": "^1.9.4",
     "next": "16.2.4",
     "react": "19.2.4",
     "react-dom": "19.2.4"
