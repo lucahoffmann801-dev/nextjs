@@ -327,9 +327,28 @@ function allowedRoute(row: RouteRow) {
 
 function allowedRestaurant(row: RestaurantRow) {
   const text = normalizedLookup(`${row.name} ${row.ort ?? ""} ${row.region ?? ""} ${row.warum ?? ""} ${row.maps_link ?? ""}`);
-  return !["hopferei", "ramstein", "miesenbach", "iliovasilema restaurant", "mezedopoleio crete", "cretangastronomy"].some((term) =>
-    text.includes(term),
-  );
+  if (
+    ["hopferei", "ramstein", "miesenbach", "iliovasilema", "mezedopoleio", "cretangastronomy", "4928370746258572476"].some(
+      (term) => text.includes(term),
+    )
+  ) {
+    return false;
+  }
+  const lat = row.lat == null ? null : numberValue(row.lat);
+  const lng = row.lng == null ? null : numberValue(row.lng);
+  if (lat != null && lng != null) {
+    const hotelLat = 35.1829;
+    const hotelLng = 24.2326;
+    const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
+    const dLat = toRadians(lat - hotelLat);
+    const dLng = toRadians(lng - hotelLng);
+    const h =
+      Math.sin(dLat / 2) ** 2 +
+      Math.sin(dLng / 2) ** 2 * Math.cos(toRadians(hotelLat)) * Math.cos(toRadians(lat));
+    const km = 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(h)));
+    if (km > 260) return false;
+  }
+  return true;
 }
 
 function mapRestaurant(row: RestaurantRow): Restaurant {

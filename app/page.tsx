@@ -680,11 +680,16 @@ function isCreteRestaurant(restaurant: Restaurant) {
     "kohlwaldchen",
     "kohilwaldchen",
     "iliovasilema restaurant",
+    "iliovasilema",
     "mezedopoleio crete",
+    "mezedopoleio",
     "cretangastronomy",
     "crete restaurant ramstein",
+    "4928370746258572476",
   ];
-  return !blockedTerms.some((term) => text.includes(stripDiacritics(term.toLowerCase())));
+  if (blockedTerms.some((term) => text.includes(stripDiacritics(term.toLowerCase())))) return false;
+  if (hasCoordinates(restaurant) && distanceKm(hotelPoint, restaurant) > 260) return false;
+  return true;
 }
 
 function isCleanBackendRoute(route: RoutePlan) {
@@ -1458,8 +1463,8 @@ function Hero({
           <div className="grid grid-cols-2 gap-3">
             <HeroMetric label="Start" value={countdown} />
             <HeroMetric label="Basis" value="Frangokastello" />
-            <HeroMetric label="Hinflug" value="FR 7910" />
-            <HeroMetric label="Guide" value="Kreta only" />
+            <HeroMetric label="Planer" value="Smart Route" />
+            <HeroMetric label="Kosten" value="+ Ausgabe" />
           </div>
         </div>
       </div>
