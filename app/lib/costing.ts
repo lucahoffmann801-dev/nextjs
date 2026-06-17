@@ -9,6 +9,7 @@ export type CostInput = {
   date: string;
   amount: number;
   paidBy: string;
+  splitMode?: string | null;
   splitLuca: number;
   splitJan: number;
   source: "fixed" | "trip";
@@ -28,6 +29,7 @@ export type ExpenseItem = {
   lucaPaid: number;
   janPaid: number;
   lucaBalance: number;
+  isSettlement?: boolean;
 };
 
 export type FixedCostView = {
@@ -100,6 +102,7 @@ type Contribution = {
   janShare: number;
   lucaBalance: number;
   source: "fixed" | "trip";
+  isSettlement: boolean;
 };
 
 function cents(value: number) {
@@ -126,8 +129,19 @@ function paidParts(amount: number, paidBy: string, splitLuca: number, splitJan: 
   return { lucaPaid: 0, janPaid: 0, open: amount };
 }
 
+function isSettlementPayment(cost: CostInput) {
+  if (cost.source !== "trip") return false;
+  const text = `${cost.area} ${cost.kind} ${cost.splitMode ?? ""} ${cost.note ?? ""}`.toLowerCase();
+  return text.includes("ausgleichzahlung") || text.includes("ausgleichszahlung") || text.includes("settlement");
+}
+
+function isSettlementOffset(cost: CostInput) {
+  return (cost.splitMode ?? "").toLowerCase().includes("gegenbuchung");
+}
+
 function contributionFor(cost: CostInput): Contribution {
   const amount = cents(cost.amount || 0);
+  const settlement = isSettlementPayment(cost);
   const splitLuca = normalizeShare(cost.splitLuca, 0.5);
   const splitJan = normalizeShare(cost.splitJan, 1 - splitLuca);
   const { lucaPaid, janPaid, open } = paidParts(amount, cost.paidBy, splitLuca, splitJan);
@@ -146,6 +160,7 @@ function contributionFor(cost: CostInput): Contribution {
     janShare,
     lucaBalance: cents(lucaPaid - lucaShare),
     source: cost.source,
+    isSettlement: settlement,
   };
 }
 
@@ -180,6 +195,7 @@ export function calculateCostState(fixedInputs: CostInput[], tripInputs: CostInp
 
   const byCategory = new Map<string, CategorySummaryItem>();
   for (const item of contributions) {
+    if (item.isSettlement) continue;
     const current =
       byCategory.get(item.category) ??
       {
@@ -232,7 +248,7 @@ export function calculateCostState(fixedInputs: CostInput[], tripInputs: CostInp
     };
   });
 
-  const expenses = tripInputs.map((cost) => {
+  const expenses = tripInputs.filter((cost) => !isSettlementOffset(cost)).map((cost) => {
     const computed = contributionFor(cost);
     return {
       id: cost.id,
@@ -247,6 +263,7 @@ export function calculateCostState(fixedInputs: CostInput[], tripInputs: CostInp
       lucaPaid: computed.lucaPaid,
       janPaid: computed.janPaid,
       lucaBalance: computed.lucaBalance,
+      isSettlement: computed.isSettlement,
     };
   });
 

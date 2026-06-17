@@ -129,6 +129,7 @@ function todayTravelDayLabel(): string | null {
 
 function categoryEmoji(category: string) {
   const text = category.toLowerCase();
+  if (text.includes("ausgleich")) return "💸";
   if (text.includes("tank")) return "⛽";
   if (text.includes("park") || text.includes("maut")) return "🅿️";
   if (text.includes("supermarkt")) return "🛒";
@@ -1453,7 +1454,7 @@ export default function Home() {
               <button
                 aria-current={view === item.id ? "page" : undefined}
                 className={classNames(
-                  "flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-[18px] px-1 text-[11px] font-black leading-none transition active:scale-[0.96]",
+                  "flex min-w-0 overflow-hidden flex-col items-center justify-center gap-0.5 rounded-[18px] px-0.5 text-[10.5px] font-black leading-none transition active:scale-[0.96]",
                   view === item.id
                     ? "bg-[#0e777c] text-white shadow-[0_10px_24px_rgba(14,119,124,0.26)]"
                     : "text-[#43665e] hover:bg-white/54",
@@ -1504,7 +1505,11 @@ export default function Home() {
         </div>
       )}
 
-      <QuickExpenseLauncher hidden={modalOpen || Boolean(toast)} onClick={() => setQuickExpenseOpen(true)} saving={saving} />
+      <QuickExpenseLauncher
+        hidden={modalOpen || Boolean(toast) || view === "kosten"}
+        onClick={() => setQuickExpenseOpen(true)}
+        saving={saving}
+      />
       <DeleteExpenseDialog
         expense={expenseToDelete}
         onCancel={() => setExpenseToDelete(null)}
@@ -1802,7 +1807,10 @@ function CostsView({
   return (
     <div className="grid gap-5">
       <section className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
-        <BalancePanel dashboard={dashboard} />
+        <div className="grid gap-4">
+          <BalancePanel dashboard={dashboard} />
+          <SettlementPaymentForm dashboard={dashboard} onCreateExpense={onCreateExpense} saving={saving} />
+        </div>
         <div className="ios-glass-card rounded-[24px] p-4">
           <SectionTitle kicker="Abrechnung" title="Live-Summen" />
           <div className="mt-4 grid gap-3">
@@ -1842,6 +1850,114 @@ function CostsView({
         ))}
       </section>
     </div>
+  );
+}
+
+function SettlementPaymentForm({
+  dashboard,
+  onCreateExpense,
+  saving,
+}: {
+  dashboard: DashboardState;
+  onCreateExpense: (input: NewExpenseInput) => Promise<boolean>;
+  saving: boolean;
+}) {
+  const defaultPayer = dashboard.direction === "jan_an_luca" ? "Jan" : "Luca";
+  const [payer, setPayer] = useState<"Luca" | "Jan">(defaultPayer);
+  const [amount, setAmount] = useState("");
+  const [formError, setFormError] = useState("");
+  const parsedAmount = parseAmountFlexible(amount);
+  const recipient = payer === "Luca" ? "Jan" : "Luca";
+  const suggestedAmount = dashboard.settlementAmount > 0 ? dashboard.settlementAmount : null;
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (parsedAmount === null) {
+      setFormError("Bitte einen gültigen Betrag eingeben.");
+      return;
+    }
+    setFormError("");
+    const ok = await onCreateExpense({
+      travelDay: `Ausgleich · ${new Intl.DateTimeFormat("de-DE").format(new Date())}`,
+      category: "Ausgleichszahlung",
+      amount: parsedAmount,
+      paidBy: payer,
+      splitMode: "Ausgleichszahlung",
+      splitLuca: 0,
+      splitJan: 0,
+      note: `Direkte Zahlung: ${payer} an ${recipient}`,
+    });
+    if (!ok) return;
+    setAmount("");
+  }
+
+  return (
+    <form className="ios-glass-card rounded-[24px] p-4" onSubmit={submit}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <SectionTitle kicker="Direkt ausgleichen" title="Ausgleichzahlung eintragen" />
+        {suggestedAmount !== null && (
+          <button
+            className="h-10 rounded-full border border-[#cbdad2] bg-white/74 px-3 text-xs font-black text-[#125f68] transition active:scale-95"
+            onClick={() => setAmount(String(suggestedAmount).replace(".", ","))}
+            type="button"
+          >
+            offen: {money(suggestedAmount)}
+          </button>
+        )}
+      </div>
+      <p className="mt-3 text-sm font-semibold leading-6 text-[#5b6f68]">
+        Tragt hier eine echte Zahlung zwischen euch ein. Sie reduziert den Ausgleich, ohne den Reise-Gesamtbetrag zu erhöhen.
+      </p>
+      <div className="mt-4 grid gap-3 md:grid-cols-[1fr_1fr_auto]">
+        <label className="grid gap-1.5">
+          <span className="text-xs font-black uppercase tracking-[0.12em] text-[#789087]">Betrag</span>
+          <span className="relative">
+            <input
+              className="h-12 w-full rounded-[16px] border border-[#cbdad2] bg-white/86 px-3 pr-10 text-lg font-black tabular-nums text-[#0e302e] outline-none transition focus:border-[#125f68]"
+              inputMode="decimal"
+              onChange={(event) => setAmount(event.target.value)}
+              placeholder="frei wählbar"
+              value={amount}
+            />
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-base font-black text-[#789087]">€</span>
+          </span>
+        </label>
+        <div className="grid gap-1.5">
+          <span className="text-xs font-black uppercase tracking-[0.12em] text-[#789087]">Richtung</span>
+          <div className="grid h-12 grid-cols-2 gap-1 rounded-[16px] bg-[#e9efe9] p-1">
+            {(["Luca", "Jan"] as const).map((person) => {
+              const to = person === "Luca" ? "Jan" : "Luca";
+              return (
+                <button
+                  aria-pressed={payer === person}
+                  className={classNames(
+                    "rounded-[13px] px-2 text-xs font-black transition",
+                    payer === person ? "bg-white text-[#0e302e] shadow-sm" : "text-[#5b6f68]",
+                  )}
+                  key={person}
+                  onClick={() => setPayer(person)}
+                  type="button"
+                >
+                  {person} → {to}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <button
+          className="h-12 self-end rounded-[16px] bg-[#125f68] px-5 text-sm font-black text-white shadow-[0_12px_30px_rgba(18,95,104,0.18)] transition active:scale-[0.98] disabled:cursor-wait disabled:opacity-60"
+          disabled={saving}
+          type="submit"
+        >
+          {saving ? "Speichert..." : "Zahlung speichern"}
+        </button>
+      </div>
+      {formError && (
+        <p className="mt-3 text-sm font-black text-[#8c3219]" role="alert">
+          {formError}
+        </p>
+      )}
+    </form>
   );
 }
 
@@ -2092,6 +2208,7 @@ function DeleteExpenseDialog({
   useBodyScrollLock(open);
 
   if (!expense) return null;
+  const settlement = Boolean(expense.isSettlement);
 
   return (
     <div
@@ -2108,7 +2225,9 @@ function DeleteExpenseDialog({
       >
         <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-[#c9d8d0] sm:hidden" />
         <p className="text-xs font-black uppercase tracking-[0.16em] text-[#8c3219]">Bist du sicher?</p>
-        <h2 className="mt-1 text-2xl font-black text-[#0e302e]">Ausgabe löschen</h2>
+        <h2 className="mt-1 text-2xl font-black text-[#0e302e]">
+          {settlement ? "Ausgleichzahlung löschen" : "Ausgabe löschen"}
+        </h2>
         <div className="mt-4 rounded-[20px] border border-white/72 bg-white/72 p-4 shadow-sm">
           <p className="text-sm font-bold text-[#357179]">{expense.travelDay}</p>
           <div className="mt-1 flex items-start justify-between gap-3">
@@ -2118,7 +2237,9 @@ function DeleteExpenseDialog({
           <p className="mt-2 text-sm font-semibold text-[#5b6f68]">Bezahlt von {expense.paidBy}</p>
         </div>
         <p className="mt-4 text-sm font-semibold leading-6 text-[#5b6f68]">
-          Die Ausgabe wird aus den Vor-Ort-Kosten entfernt und der Ausgleich wird danach sofort neu berechnet.
+          {settlement
+            ? "Die Direktzahlung und ihre Gegenbuchung werden entfernt. Der offene Ausgleich wird danach sofort neu berechnet."
+            : "Die Ausgabe wird aus den Vor-Ort-Kosten entfernt und der Ausgleich wird danach sofort neu berechnet."}
         </p>
         <div className="sticky bottom-0 mt-4 grid grid-cols-2 gap-2 bg-[#fbfdf9]/90 pt-3 backdrop-blur">
           <button
@@ -3197,15 +3318,23 @@ function ExpenseRow({
   onDelete: () => void;
   saving: boolean;
 }) {
-  const balanceLabel =
-    expense.lucaBalance < 0
+  const isSettlement = Boolean(expense.isSettlement);
+  const settlementRecipient = expense.paidBy === "Luca" ? "Jan" : "Luca";
+  const balanceLabel = isSettlement
+    ? `${expense.paidBy} → ${settlementRecipient} · direkter Ausgleich`
+    : expense.lucaBalance < 0
       ? `Luca an Jan ${money(Math.abs(expense.lucaBalance))}`
       : expense.lucaBalance > 0
         ? `Jan an Luca ${money(expense.lucaBalance)}`
         : "ausgeglichen";
 
   return (
-    <article className="rounded-[18px] border border-white/70 bg-[#eff6f2]/86 p-3 shadow-[0_10px_24px_rgba(14,48,46,0.06)]">
+    <article
+      className={classNames(
+        "rounded-[18px] border p-3 shadow-[0_10px_24px_rgba(14,48,46,0.06)]",
+        isSettlement ? "border-[#b9d8d0] bg-[#edf8f4]/90" : "border-white/70 bg-[#eff6f2]/86",
+      )}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm font-bold text-[#357179]">{expense.travelDay}</p>
@@ -3225,17 +3354,9 @@ function ExpenseRow({
         </div>
       </div>
       <p className="mt-2 text-sm font-semibold text-[#44635b]">
-        Bezahlt von {expense.paidBy} · {balanceLabel}
+        {isSettlement ? "Ausgleich" : `Bezahlt von ${expense.paidBy}`} · {balanceLabel}
       </p>
       {expense.note && <p className="mt-1 text-sm font-medium text-[#5b6f68]">{expense.note}</p>}
-      <button
-        className="hidden"
-        disabled={saving}
-        onClick={onDelete}
-        type="button"
-      >
-        Löschen
-      </button>
     </article>
   );
 }

@@ -24,6 +24,7 @@ import {
   type DashboardState,
 } from "./costing";
 import { supabaseRest } from "./supabase-rest";
+import { randomUUID } from "node:crypto";
 
 type FixedRow = {
   id: string;
@@ -54,6 +55,8 @@ type ExpenseRow = {
   note: string | null;
   created_at: string;
 };
+
+type ExpenseLinkRow = Pick<ExpenseRow, "id" | "note" | "split_mode">;
 
 type FlightRow = {
   id: string;
@@ -186,8 +189,12 @@ function numberValue(value: number | string | null | undefined) {
 }
 
 function shareValue(value: number | string | null | undefined, fallback: number) {
-  const parsed = numberValue(value);
-  if (!parsed) return fallback;
+  if (value === null || value === undefined || value === "") return fallback;
+  const parsed =
+    typeof value === "number"
+      ? value
+      : Number(String(value).replace("â‚¬", "").replace(/\./g, "").replace(",", ".").trim());
+  if (!Number.isFinite(parsed)) return fallback;
   return parsed > 1 ? parsed / 100 : parsed;
 }
 
@@ -201,11 +208,16 @@ function fixedInput(row: FixedRow): CostInput {
     date: row.cost_date ?? "",
     amount: numberValue(row.amount),
     paidBy: row.paid_by ?? "Offen",
+    splitMode: row.split_mode,
     splitLuca: shareValue(row.split_luca, 0.5),
     splitJan: shareValue(row.split_jan, 0.5),
     source: "fixed",
     note: row.note,
   };
+}
+
+function cleanSettlementNote(note: string | null) {
+  return (note ?? "").replace(/\s*\[settlement:[^\]]+\]\s*/gi, " ").trim();
 }
 
 function expenseInput(row: ExpenseRow): CostInput {
@@ -218,10 +230,11 @@ function expenseInput(row: ExpenseRow): CostInput {
     date: row.travel_day ?? row.expense_date ?? "",
     amount: numberValue(row.amount),
     paidBy: row.paid_by ?? "Offen",
+    splitMode: row.split_mode,
     splitLuca: shareValue(row.split_luca, 0.5),
     splitJan: shareValue(row.split_jan, 0.5),
     source: "trip",
-    note: row.note,
+    note: cleanSettlementNote(row.note),
   };
 }
 
@@ -462,6 +475,52 @@ export async function createExpense(input: NewExpenseInput) {
 
   const note = input.note?.trim() ?? "";
   const category = input.category.trim();
+  if (!category) {
+    throw new Error("Kategorie fehlt.");
+  }
+
+  const settlement = (input.splitMode ?? "").toLowerCase() === "ausgleichszahlung";
+  if (settlement) {
+    const recipient = input.paidBy === "Luca" ? "Jan" : "Luca";
+    const splitLuca = recipient === "Luca" ? 1 : 0;
+    const splitJan = 1 - splitLuca;
+    const marker = `[settlement:${randomUUID()}]`;
+    const primaryNote = `${note || `Direkte Zahlung: ${input.paidBy} an ${recipient}`} ${marker}`.trim();
+
+    await supabaseRest<ExpenseRow[]>("kreta_expenses?select=*", {
+      method: "POST",
+      prefer: "return=representation",
+      body: [
+        {
+          travel_day: input.travelDay,
+          title: "Ausgleichszahlung",
+          category: "Ausgleichszahlung",
+          amount,
+          paid_by: input.paidBy,
+          split_mode: "Ausgleichszahlung",
+          split_luca: splitLuca,
+          split_jan: splitJan,
+          note: primaryNote,
+          source: "app",
+        },
+        {
+          travel_day: input.travelDay,
+          title: "Ausgleichsgegenbuchung",
+          category: "Ausgleichszahlung",
+          amount: -amount,
+          paid_by: recipient,
+          split_mode: "Ausgleichszahlung-Gegenbuchung",
+          split_luca: splitLuca,
+          split_jan: splitJan,
+          note: `Technische Gegenbuchung ${marker}`,
+          source: "app",
+        },
+      ],
+    });
+
+    return getTripState();
+  }
+
   const splitLuca = shareValue(input.splitLuca, 0.5);
   const splitJan = shareValue(input.splitJan, 1 - splitLuca);
   await supabaseRest<ExpenseRow[]>("kreta_expenses?select=*", {
@@ -511,8 +570,30 @@ export async function createRoute(input: NewRouteInput) {
 
 export async function deleteExpense(id: string) {
   if (!id) throw new Error("Expense id missing.");
-  await supabaseRest<null>(`kreta_expenses?id=eq.${encodeURIComponent(id)}`, {
-    method: "DELETE",
-  });
+  const rows = await supabaseRest<ExpenseLinkRow[]>(
+    `kreta_expenses?select=id,note,split_mode&id=eq.${encodeURIComponent(id)}&limit=1`,
+  );
+  const row = rows[0];
+  const marker = row?.note?.match(/\[settlement:[^\]]+\]/i)?.[0];
+
+  if (marker && row.split_mode?.toLowerCase() === "ausgleichszahlung") {
+    const settlementRows = await supabaseRest<ExpenseLinkRow[]>(
+      `kreta_expenses?select=id,note,split_mode&split_mode=like.${encodeURIComponent("Ausgleichszahlung*")}`,
+    );
+    const linkedIds = settlementRows.filter((item) => item.note?.includes(marker)).map((item) => item.id);
+    if (linkedIds.length === 0) linkedIds.push(id);
+    await Promise.all(
+      linkedIds.map((linkedId) =>
+        supabaseRest<null>(`kreta_expenses?id=eq.${encodeURIComponent(linkedId)}`, {
+          method: "DELETE",
+        }),
+      ),
+    );
+  } else {
+    await supabaseRest<null>(`kreta_expenses?id=eq.${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    });
+  }
+
   return getTripState();
 }
