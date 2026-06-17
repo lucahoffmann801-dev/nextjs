@@ -1,1 +1,9 @@
 .Rhistory
+
+node_modules/
+.next/
+out/
+output/
+test-results/
+dev-server.log
+*.tsbuildinfo

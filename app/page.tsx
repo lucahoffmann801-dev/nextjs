@@ -74,12 +74,18 @@ type PlannedRoute = {
   mapsLinks: string[];
   createdAt: string;
 };
+type ToastState = {
+  title: string;
+  detail?: string;
+  tone?: "success" | "error";
+};
 
 const views: { id: View; label: string }[] = [
   { id: "home", label: "Home" },
   { id: "kosten", label: "Kosten" },
   { id: "reise", label: "Reise" },
   { id: "routen", label: "Routen" },
+  { id: "guide", label: "Guide" },
 ];
 
 const heroImage =
@@ -1091,6 +1097,30 @@ function daysUntilTrip() {
   return Math.ceil((start.getTime() - now.getTime()) / 86_400_000);
 }
 
+function useBodyScrollLock(locked: boolean) {
+  useEffect(() => {
+    if (!locked) return;
+    const scrollY = window.scrollY;
+    const previousPosition = document.body.style.position;
+    const previousTop = document.body.style.top;
+    const previousWidth = document.body.style.width;
+    const previousOverflow = document.body.style.overflow;
+
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = "100%";
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.position = previousPosition;
+      document.body.style.top = previousTop;
+      document.body.style.width = previousWidth;
+      document.body.style.overflow = previousOverflow;
+      window.scrollTo(0, scrollY);
+    };
+  }, [locked]);
+}
+
 function fallbackState(): TripState {
   return {
     dashboard: fallbackDashboard as DashboardState,
@@ -1122,13 +1152,14 @@ export default function Home() {
   const [smartRoutesLoaded, setSmartRoutesLoaded] = useState(false);
   const [quickExpenseOpen, setQuickExpenseOpen] = useState(false);
   const [daysLeft, setDaysLeft] = useState<number | null>(null);
-  const [toast, setToast] = useState("");
+  const [toast, setToast] = useState<ToastState | null>(null);
+  const [expenseToDelete, setExpenseToDelete] = useState<ExpenseItem | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  function showToast(message: string) {
-    setToast(message);
+  function showToast(title: string, detail?: string, tone: ToastState["tone"] = "success") {
+    setToast({ title, detail, tone });
     if (toastTimer.current) clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(""), 3200);
+    toastTimer.current = setTimeout(() => setToast(null), 3200);
   }
   const contentRef = useRef<HTMLDivElement>(null);
   const didMount = useRef(false);
@@ -1235,11 +1266,11 @@ export default function Home() {
       const state = await response.json();
       if (!response.ok) throw new Error(state.error ?? "Ausgabe konnte nicht gespeichert werden.");
       setAppState(state as TripState);
-      showToast(`Gespeichert: ${money(input.amount)} · ${input.category} · ${input.paidBy} bezahlt`);
+      showToast("Gespeichert", `${money(input.amount)} · ${input.category} · ${input.paidBy} bezahlt`);
       return true;
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Ausgabe konnte nicht gespeichert werden.");
-      showToast("Speichern hat nicht geklappt.");
+      showToast("Speichern hat nicht geklappt", "Bitte kurz prüfen und nochmal versuchen.", "error");
       return false;
     } finally {
       setSaving(false);
@@ -1263,7 +1294,7 @@ export default function Home() {
         ...current,
         packItems: current.packItems.map((item) => (item.id === id ? { ...item, [field]: !value } : item)),
       }));
-      showToast("Packliste konnte nicht gespeichert werden.");
+      showToast("Packliste nicht gespeichert", "Die Änderung wurde zurückgenommen.", "error");
     }
   }
 
@@ -1275,9 +1306,10 @@ export default function Home() {
       const state = await response.json();
       if (!response.ok) throw new Error(state.error ?? "Ausgabe konnte nicht gelöscht werden.");
       setAppState(state as TripState);
-      showToast("Ausgabe gelöscht");
+      showToast("Ausgabe gelöscht", "Die Kosten wurden neu berechnet.");
     } catch (deleteError) {
       setError(deleteError instanceof Error ? deleteError.message : "Ausgabe konnte nicht gelöscht werden.");
+      showToast("Löschen fehlgeschlagen", "Die Ausgabe ist noch vorhanden.", "error");
     } finally {
       setSaving(false);
     }
@@ -1312,19 +1344,21 @@ export default function Home() {
     }
   }
 
+  const modalOpen = quickExpenseOpen || Boolean(expenseToDelete);
+
   return (
-    <main className="min-h-screen pb-36 text-[#17201c] md:pb-16">
-      <header className="sticky top-0 z-40 border-b border-[#d7e3dc] bg-[#fbfdf9]/92 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
+    <main className="app-shell text-[#17201c]">
+      <header className="ios-glass-header sticky top-0 z-40">
+        <div className="ios-header-inner mx-auto flex max-w-6xl items-center justify-between gap-3 px-4">
           <button
             className="min-w-0 text-left"
             onClick={() => setView("home")}
             type="button"
           >
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#357179]">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#357179] sm:text-[11px]">
               {trip.dates}
             </p>
-            <h1 className="truncate text-lg font-black text-[#0e302e] sm:text-xl">
+            <h1 className="truncate text-[19px] font-black leading-none text-[#0e302e] sm:text-xl">
               {trip.title} · {trip.people}
             </h1>
           </button>
@@ -1368,7 +1402,7 @@ export default function Home() {
             fixedCosts={appState.fixedCosts}
             maxCategoryTotal={maxCategoryTotal}
             onCreateExpense={createExpense}
-            onDeleteExpense={deleteExpense}
+            onRequestDeleteExpense={setExpenseToDelete}
             saving={saving}
           />
         )}
@@ -1412,40 +1446,75 @@ export default function Home() {
         </footer>
       </div>
 
-      <nav
-        className="fixed inset-x-0 bottom-0 z-50 border-t border-[#d7e3dc] bg-[#fbfdf9]/95 px-1 pt-1.5 shadow-[0_-12px_30px_rgba(14,48,46,0.12)] backdrop-blur-xl md:hidden"
-        style={{ paddingBottom: "max(6px, env(safe-area-inset-bottom))" }}
-      >
-        <div className="mx-auto grid max-w-md grid-cols-4 gap-0.5">
-          {views.map((item) => (
-            <button
-              aria-current={view === item.id ? "page" : undefined}
-              className={classNames(
-                "flex h-[54px] flex-col items-center justify-center gap-0.5 rounded-[10px] px-0.5 text-[10px] font-black transition",
-                view === item.id ? "bg-[#125f68] text-white" : "text-[#44635b]",
-              )}
-              key={item.id}
-              onClick={() => setView(item.id)}
-              type="button"
-            >
-              <NavIcon view={item.id} />
-              {item.label}
-            </button>
-          ))}
-        </div>
-      </nav>
+      {!modalOpen && (
+        <nav aria-label="Hauptnavigation" className="mobile-glass-nav md:hidden">
+          <div className="mobile-nav-grid">
+            {views.map((item) => (
+              <button
+                aria-current={view === item.id ? "page" : undefined}
+                className={classNames(
+                  "flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-[18px] px-1 text-[11px] font-black leading-none transition active:scale-[0.96]",
+                  view === item.id
+                    ? "bg-[#0e777c] text-white shadow-[0_10px_24px_rgba(14,119,124,0.26)]"
+                    : "text-[#43665e] hover:bg-white/54",
+                )}
+                key={item.id}
+                onClick={() => setView(item.id)}
+                type="button"
+              >
+                <NavIcon view={item.id} />
+                <span className="truncate">{item.label}</span>
+              </button>
+            ))}
+          </div>
+        </nav>
+      )}
 
-      {toast && (
+      {toast && !modalOpen && (
         <div
-          className="toast-pop fixed left-1/2 top-3 z-[90] max-w-[calc(100%-32px)] -translate-x-1/2 rounded-full bg-[#0e302e] px-5 py-2.5 text-sm font-black text-white shadow-[0_12px_36px_rgba(0,0,0,0.3)]"
+          className={classNames(
+            "toast-pop ios-toast fixed left-3 right-3 z-[90] mx-auto flex max-w-md items-start gap-3 rounded-[24px] border px-4 py-3 text-left shadow-[0_18px_46px_rgba(14,48,46,0.18)] md:left-1/2 md:right-auto md:w-[min(420px,calc(100%-32px))] md:-translate-x-1/2",
+            toast.tone === "error"
+              ? "border-[#f1c7bb] bg-[#fff3ee]/86 text-[#8c3219]"
+              : "border-white/70 bg-[#f8fffb]/84 text-[#0e302e]",
+          )}
           role="status"
-          style={{ marginTop: "env(safe-area-inset-top)" }}
         >
-          ✓ {toast}
+          <span
+            aria-hidden="true"
+            className={classNames(
+              "mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full text-base font-black",
+              toast.tone === "error" ? "bg-[#ffd5c8] text-[#8c3219]" : "bg-[#dff6ed] text-[#125f68]",
+            )}
+          >
+            {toast.tone === "error" ? "!" : "✓"}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-black leading-tight">{toast.title}</span>
+            {toast.detail && <span className="mt-0.5 block truncate text-xs font-bold opacity-72">{toast.detail}</span>}
+          </span>
+          <button
+            aria-label="Meldung schließen"
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white/58 text-lg font-black text-current transition active:scale-95"
+            onClick={() => setToast(null)}
+            type="button"
+          >
+            ×
+          </button>
         </div>
       )}
 
-      <QuickExpenseLauncher onClick={() => setQuickExpenseOpen(true)} saving={saving} />
+      <QuickExpenseLauncher hidden={modalOpen || Boolean(toast)} onClick={() => setQuickExpenseOpen(true)} saving={saving} />
+      <DeleteExpenseDialog
+        expense={expenseToDelete}
+        onCancel={() => setExpenseToDelete(null)}
+        onConfirm={async () => {
+          if (!expenseToDelete) return;
+          await deleteExpense(expenseToDelete.id);
+          setExpenseToDelete(null);
+        }}
+        saving={saving}
+      />
       <QuickExpenseSheet
         onClose={() => setQuickExpenseOpen(false)}
         onCreateExpense={createExpense}
@@ -1621,7 +1690,7 @@ function HomeView({
   return (
     <div className="grid gap-5">
       <button
-        className="flex w-full flex-wrap items-center gap-x-5 gap-y-2 rounded-[14px] border border-[#d7e3dc] bg-white px-4 py-3 text-left shadow-sm transition hover:border-[#8fb0a4]"
+        className="ios-glass-card flex w-full flex-wrap items-center gap-x-5 gap-y-2 rounded-[24px] px-4 py-3.5 text-left transition active:scale-[0.99] hover:border-[#8fb0a4]"
         onClick={() => setView("kosten")}
         type="button"
       >
@@ -1645,7 +1714,7 @@ function HomeView({
         <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {quickCards.map((card) => (
             <button
-              className="flex min-h-[104px] flex-col items-start gap-1 rounded-[14px] border border-[#d7e3dc] bg-white p-3.5 text-left shadow-sm transition active:scale-[0.97] sm:hover:-translate-y-0.5 sm:hover:border-[#8fb0a4] sm:hover:shadow-md"
+              className="ios-glass-card flex min-h-[104px] flex-col items-start gap-1 rounded-[22px] p-3.5 text-left transition active:scale-[0.97] sm:hover:-translate-y-0.5 sm:hover:border-[#8fb0a4] sm:hover:shadow-md"
               key={card.label}
               onClick={card.action}
               type="button"
@@ -1659,7 +1728,7 @@ function HomeView({
       </section>
 
       {planTitle && (
-        <section className="rounded-[14px] border border-[#125f68]/30 bg-white p-4 shadow-sm">
+        <section className="ios-glass-card rounded-[24px] border-[#125f68]/22 p-4">
           <div className="flex items-start justify-between gap-3">
             <SectionTitle kicker={planIsToday ? "Heutiger Plan" : "Nächster Plan"} title={planTitle} />
             {planMaps && planMaps !== "#" && (
@@ -1683,7 +1752,7 @@ function HomeView({
       )}
 
       <section className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded-[14px] border border-[#d7e3dc] bg-[#0e302e] p-4 text-white shadow-sm">
+        <div className="ios-glass-dark rounded-[24px] p-4 text-white">
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#9de7dc]">Vor Ort ausgegeben</p>
           <p className="mt-2 text-2xl font-black tabular-nums">{money(dashboard.onTrip.amount)}</p>
           <p className="mt-1 text-sm font-semibold text-white/72">
@@ -1697,7 +1766,7 @@ function HomeView({
             + Ausgabe hinzufügen
           </button>
         </div>
-        <div className="overflow-hidden rounded-[14px] border border-[#d7e3dc] bg-white shadow-sm">
+        <div className="ios-glass-card overflow-hidden rounded-[24px]">
           <img alt="Jan und Luca auf Kreta" className="h-40 w-full object-cover object-[50%_30%]" src={janLucaImage} />
           <div className="p-3.5">
             <p className="text-sm font-black text-[#0e302e]">Jan &amp; Luca · {trip.dates}</p>
@@ -1718,7 +1787,7 @@ function CostsView({
   fixedCosts,
   maxCategoryTotal,
   onCreateExpense,
-  onDeleteExpense,
+  onRequestDeleteExpense,
   saving,
 }: {
   categorySummary: CategorySummaryItem[];
@@ -1727,14 +1796,14 @@ function CostsView({
   fixedCosts: FixedCost[];
   maxCategoryTotal: number;
   onCreateExpense: (input: NewExpenseInput) => Promise<boolean>;
-  onDeleteExpense: (id: string) => Promise<void>;
+  onRequestDeleteExpense: (expense: ExpenseItem) => void;
   saving: boolean;
 }) {
   return (
     <div className="grid gap-5">
       <section className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
         <BalancePanel dashboard={dashboard} />
-        <div className="rounded-[8px] border border-[#d7e3dc] bg-white p-4 shadow-sm">
+        <div className="ios-glass-card rounded-[24px] p-4">
           <SectionTitle kicker="Abrechnung" title="Live-Summen" />
           <div className="mt-4 grid gap-3">
             {categorySummary.map((item) => (
@@ -1747,7 +1816,7 @@ function CostsView({
       <section className="grid gap-5 lg:grid-cols-[0.95fr_1.05fr]">
         <ExpenseForm onCreateExpense={onCreateExpense} saving={saving} title="Ausgabe eintragen" />
 
-        <section className="rounded-[8px] border border-[#d7e3dc] bg-white p-4 shadow-sm">
+        <section className="ios-glass-card rounded-[24px] p-4">
           <SectionTitle kicker="Vor Ort" title="Aktuelle Einträge" />
           <div className="mt-4 grid gap-3">
             {expenses.length === 0 && (
@@ -1759,7 +1828,7 @@ function CostsView({
               <ExpenseRow
                 expense={expense}
                 key={expense.id}
-                onDelete={() => onDeleteExpense(expense.id)}
+                onDelete={() => onRequestDeleteExpense(expense)}
                 saving={saving}
               />
             ))}
@@ -1803,6 +1872,14 @@ function ExpenseForm({
   const splitJan = splitPreset === "custom" ? 1 - splitLuca : selectedSplit.jan;
   const parsedAmount = parseAmountFlexible(amount);
 
+  useEffect(() => {
+    if (!compact) return;
+    const timer = window.setTimeout(() => {
+      amountRef.current?.focus({ preventScroll: true });
+    }, 140);
+    return () => window.clearTimeout(timer);
+  }, [compact]);
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (parsedAmount === null) {
@@ -1832,8 +1909,8 @@ function ExpenseForm({
   return (
     <form
       className={classNames(
-        "rounded-[14px] bg-white p-4",
-        compact ? "p-1" : "border border-[#d7e3dc] shadow-sm",
+        "rounded-[24px] bg-white/86 p-4",
+        compact ? "p-1 shadow-none" : "ios-glass-card",
       )}
       onSubmit={submit}
     >
@@ -1984,18 +2061,85 @@ function ExpenseForm({
   );
 }
 
-function QuickExpenseLauncher({ onClick, saving }: { onClick: () => void; saving: boolean }) {
+function QuickExpenseLauncher({ hidden = false, onClick, saving }: { hidden?: boolean; onClick: () => void; saving: boolean }) {
+  if (hidden) return null;
+
   return (
     <button
-      className="fixed bottom-[88px] right-4 z-[60] flex h-14 items-center gap-2 rounded-full bg-[#0e302e] pl-3 pr-5 text-[15px] font-black text-white shadow-[0_18px_44px_rgba(14,48,46,0.34)] transition hover:bg-[#125f68] active:scale-95 md:bottom-6"
+      className="quick-fab fixed z-[60] grid h-14 w-14 place-items-center rounded-full border border-white/25 bg-[#0e302e]/94 text-white shadow-[0_18px_44px_rgba(14,48,46,0.34)] transition hover:bg-[#125f68] active:scale-95 md:flex md:w-auto md:gap-2 md:pl-3 md:pr-5"
       disabled={saving}
       onClick={onClick}
-      style={{ marginBottom: "env(safe-area-inset-bottom)" }}
       type="button"
     >
-      <span className="grid h-9 w-9 place-items-center rounded-full bg-[#ffe1a8] text-xl leading-none text-[#0e302e]">+</span>
-      Ausgabe
+      <span className="grid h-10 w-10 place-items-center rounded-full bg-[#ffe1a8] text-[28px] leading-none text-[#0e302e] md:h-9 md:w-9 md:text-xl">+</span>
+      <span className="hidden text-[15px] font-black md:inline">Ausgabe</span>
     </button>
+  );
+}
+
+function DeleteExpenseDialog({
+  expense,
+  onCancel,
+  onConfirm,
+  saving,
+}: {
+  expense: ExpenseItem | null;
+  onCancel: () => void;
+  onConfirm: () => Promise<void>;
+  saving: boolean;
+}) {
+  const open = Boolean(expense);
+  useBodyScrollLock(open);
+
+  if (!expense) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-end justify-center bg-[#061f20]/52 p-3 backdrop-blur-sm sm:items-center"
+      onClick={saving ? undefined : onCancel}
+      role="presentation"
+    >
+      <section
+        aria-label="Ausgabe löschen bestätigen"
+        aria-modal="true"
+        className="ios-alert-panel quick-sheet max-h-[calc(100dvh-28px)] w-full max-w-md overflow-y-auto rounded-[28px] border border-white/64 bg-[#fbfdf9]/90 p-4 pb-[calc(16px+env(safe-area-inset-bottom))] shadow-[0_24px_70px_rgba(0,0,0,0.28)] sm:rounded-[30px]"
+        onClick={(event) => event.stopPropagation()}
+        role="dialog"
+      >
+        <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-[#c9d8d0] sm:hidden" />
+        <p className="text-xs font-black uppercase tracking-[0.16em] text-[#8c3219]">Bist du sicher?</p>
+        <h2 className="mt-1 text-2xl font-black text-[#0e302e]">Ausgabe löschen</h2>
+        <div className="mt-4 rounded-[20px] border border-white/72 bg-white/72 p-4 shadow-sm">
+          <p className="text-sm font-bold text-[#357179]">{expense.travelDay}</p>
+          <div className="mt-1 flex items-start justify-between gap-3">
+            <p className="min-w-0 flex-1 text-lg font-black leading-tight text-[#0e302e]">{expense.category}</p>
+            <p className="shrink-0 text-lg font-black tabular-nums text-[#0e302e]">{money(expense.amount)}</p>
+          </div>
+          <p className="mt-2 text-sm font-semibold text-[#5b6f68]">Bezahlt von {expense.paidBy}</p>
+        </div>
+        <p className="mt-4 text-sm font-semibold leading-6 text-[#5b6f68]">
+          Die Ausgabe wird aus den Vor-Ort-Kosten entfernt und der Ausgleich wird danach sofort neu berechnet.
+        </p>
+        <div className="sticky bottom-0 mt-4 grid grid-cols-2 gap-2 bg-[#fbfdf9]/90 pt-3 backdrop-blur">
+          <button
+            className="h-12 rounded-[16px] border border-[#cbdad2] bg-white/80 px-4 text-sm font-black text-[#34554e] transition active:scale-[0.98]"
+            disabled={saving}
+            onClick={onCancel}
+            type="button"
+          >
+            Abbrechen
+          </button>
+          <button
+            className="h-12 rounded-[16px] bg-[#8c3219] px-4 text-sm font-black text-white shadow-[0_12px_30px_rgba(140,50,25,0.22)] transition active:scale-[0.98] disabled:cursor-wait disabled:opacity-60"
+            disabled={saving}
+            onClick={onConfirm}
+            type="button"
+          >
+            {saving ? "Lösche..." : "Ja, löschen"}
+          </button>
+        </div>
+      </section>
+    </div>
   );
 }
 
@@ -2010,27 +2154,20 @@ function QuickExpenseSheet({
   open: boolean;
   saving: boolean;
 }) {
-  useEffect(() => {
-    if (!open) return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previous;
-    };
-  }, [open]);
+  useBodyScrollLock(open);
 
   if (!open) return null;
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-end justify-center bg-[#082324]/50 backdrop-blur-sm sm:items-center sm:p-5"
+      className="fixed inset-0 z-[70] flex items-end justify-center bg-[#082324]/52 p-0 backdrop-blur-sm sm:items-center sm:p-5"
       onClick={onClose}
       role="presentation"
     >
       <div
         aria-label="Ausgabe eintragen"
         aria-modal="true"
-        className="quick-sheet max-h-[92dvh] w-full max-w-xl overflow-y-auto rounded-t-[22px] bg-white p-4 pb-[max(16px,env(safe-area-inset-bottom))] shadow-[0_-12px_60px_rgba(0,0,0,0.3)] sm:max-h-[86vh] sm:rounded-[22px]"
+        className="quick-sheet quick-sheet-panel max-h-[min(92dvh,calc(100dvh-24px))] w-full max-w-xl overflow-y-auto rounded-t-[30px] border border-white/64 bg-[#fbfdf9]/92 p-4 pb-[calc(18px+env(safe-area-inset-bottom))] shadow-[0_-18px_70px_rgba(0,0,0,0.28)] sm:max-h-[86vh] sm:rounded-[30px]"
         onClick={(event) => event.stopPropagation()}
         role="dialog"
       >
@@ -3006,7 +3143,7 @@ function PackView({
 
 function BalancePanel({ dashboard }: { dashboard: DashboardState }) {
   return (
-    <section className="rounded-[8px] border border-[#125f68]/20 bg-[#0f3d3f] p-5 text-white shadow-sm">
+    <section className="ios-glass-dark rounded-[24px] p-5 text-white">
       <p className="text-sm font-bold uppercase tracking-[0.18em] text-[#9fe0d5]">
         Aktueller Ausgleich
       </p>
@@ -3068,20 +3205,31 @@ function ExpenseRow({
         : "ausgeglichen";
 
   return (
-    <article className="rounded-[8px] bg-[#eff6f2] p-3">
+    <article className="rounded-[18px] border border-white/70 bg-[#eff6f2]/86 p-3 shadow-[0_10px_24px_rgba(14,48,46,0.06)]">
       <div className="flex items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <p className="text-sm font-bold text-[#357179]">{expense.travelDay}</p>
-          <h3 className="text-lg font-black text-[#0e302e]">{expense.category}</h3>
+          <h3 className="truncate text-lg font-black text-[#0e302e]">{expense.category}</h3>
         </div>
-        <p className="shrink-0 text-lg font-black text-[#0e302e]">{money(expense.amount)}</p>
+        <div className="flex shrink-0 items-start gap-2">
+          <p className="text-lg font-black tabular-nums text-[#0e302e]">{money(expense.amount)}</p>
+          <button
+            aria-label={`${expense.category} löschen`}
+            className="grid h-10 w-10 place-items-center rounded-full border border-[#efc7bc] bg-white/88 text-lg font-black leading-none text-[#8c3219] shadow-sm transition active:scale-95 disabled:opacity-60"
+            disabled={saving}
+            onClick={onDelete}
+            type="button"
+          >
+            ×
+          </button>
+        </div>
       </div>
       <p className="mt-2 text-sm font-semibold text-[#44635b]">
         Bezahlt von {expense.paidBy} · {balanceLabel}
       </p>
       {expense.note && <p className="mt-1 text-sm font-medium text-[#5b6f68]">{expense.note}</p>}
       <button
-        className="mt-3 rounded-[8px] border border-[#cbdad2] bg-white px-3 py-2 text-xs font-black text-[#8c3219] disabled:opacity-60"
+        className="hidden"
         disabled={saving}
         onClick={onDelete}
         type="button"
@@ -3578,8 +3726,8 @@ function SyncPill({ error, loading, sourceKind }: { error: boolean; loading: boo
     <button
       aria-live="polite"
       className={classNames(
-        "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-black",
-        offline ? "border-[#e4b2a1] bg-[#fff1eb] text-[#8c3219]" : "border-[#d7e3dc] bg-white text-[#44635b]",
+        "inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[11px] font-black shadow-sm backdrop-blur-xl sm:text-xs",
+        offline ? "border-[#e4b2a1] bg-[#fff1eb]/84 text-[#8c3219]" : "border-white/70 bg-white/62 text-[#44635b]",
       )}
       onClick={offline ? () => window.location.reload() : undefined}
       type="button"
