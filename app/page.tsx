@@ -28,6 +28,11 @@ import type {
   ExpenseItem,
 } from "./lib/costing";
 import type { NewExpenseInput, TripState } from "./lib/trip-state";
+import type {
+  RailAlternativesResult,
+  RailLegLookup,
+  RailStatusResult,
+} from "./lib/rail-live-types";
 
 type View = "home" | "kosten" | "reise" | "routen" | "karte" | "guide" | "packen";
 type GuideMode = "restaurants" | "sights";
@@ -73,6 +78,14 @@ type PlannedRoute = {
   stress: "entspannt" | "mittel" | "intensiv";
   mapsLinks: string[];
   createdAt: string;
+};
+type RailLegUiState = {
+  status?: RailStatusResult;
+  statusLoading?: boolean;
+  statusError?: string;
+  alternatives?: RailAlternativesResult;
+  alternativesLoading?: boolean;
+  alternativesError?: string;
 };
 type ToastState = {
   title: string;
@@ -1812,10 +1825,7 @@ function CostsView({
   return (
     <div className="grid gap-5">
       <section className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
-        <div className="grid gap-4">
-          <BalancePanel dashboard={dashboard} />
-          <SettlementPaymentForm dashboard={dashboard} onCreateExpense={onCreateExpense} saving={saving} />
-        </div>
+        <BalancePanel dashboard={dashboard} />
         <div className="ios-glass-card rounded-[24px] p-4">
           <SectionTitle kicker="Abrechnung" title="Live-Summen" />
           <div className="mt-4 grid gap-3">
@@ -1848,6 +1858,8 @@ function CostsView({
           </div>
         </section>
       </section>
+
+      <SettlementPaymentForm dashboard={dashboard} onCreateExpense={onCreateExpense} saving={saving} />
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {fixedCosts.map((cost) => (
@@ -2383,13 +2395,49 @@ function QuickExpenseSheet({
   );
 }
 
+function timeToMinutes(value: string) {
+  const [hours, minutes] = value.split(":").map(Number);
+  return Number.isFinite(hours) && Number.isFinite(minutes) ? hours * 60 + minutes : null;
+}
+
+function connectionBufferMinutes(leg: TrainLeg, orderedLegs: TrainLeg[]) {
+  const index = orderedLegs.findIndex((candidate) => candidate.id === leg.id);
+  const next = orderedLegs[index + 1];
+  if (!next || normalizedText(leg.to) !== normalizedText(next.from)) return null;
+  const arrival = timeToMinutes(leg.arr);
+  const departure = timeToMinutes(next.dep);
+  if (arrival === null || departure === null) return null;
+  return departure >= arrival ? departure - arrival : departure + 24 * 60 - arrival;
+}
+
+function railLookup(leg: TrainLeg, orderedLegs: TrainLeg[]): RailLegLookup {
+  return {
+    id: leg.id,
+    train: leg.train,
+    from: leg.from,
+    to: leg.to,
+    date: leg.date,
+    plannedDeparture: leg.dep,
+    plannedArrival: leg.arr,
+    plannedDeparturePlatform: leg.depPlatform,
+    plannedArrivalPlatform: leg.arrPlatform,
+    fromStationId: leg.fromStationId,
+    toStationId: leg.toStationId,
+    timeZone: leg.timeZone || "Europe/Berlin",
+    connectionBufferMinutes: connectionBufferMinutes(leg, orderedLegs),
+  };
+}
+
 function TravelView({ flights, trains }: { flights: Flight[]; trains: TrainLeg[] }) {
   const [activeTab, setActiveTab] = useState("outbound-trains");
-  const [liveCheckedAt, setLiveCheckedAt] = useState("");
+  const [railState, setRailState] = useState<Record<string, RailLegUiState>>({});
   const outboundTrains = trains.filter((leg) => stripDiacritics(normalizedText(leg.direction)).includes("hin"));
   const inboundTrains = trains.filter((leg) => stripDiacritics(normalizedText(leg.direction)).includes("ruck"));
   const outboundFlight = flights.find((flight) => stripDiacritics(normalizedText(flight.direction)).includes("hin")) ?? flights[0];
   const inboundFlight = flights.find((flight) => stripDiacritics(normalizedText(flight.direction)).includes("ruck")) ?? flights[1];
+  const visibleTrains =
+    activeTab === "outbound-trains" ? outboundTrains : activeTab === "inbound-trains" ? inboundTrains : [];
+  const checkingVisible = visibleTrains.some((leg) => railState[leg.id]?.statusLoading);
   const tabs = [
     { id: "outbound-trains", label: "Hin-Züge" },
     { id: "outbound-flight", label: "Hin-Flug" },
@@ -2397,22 +2445,91 @@ function TravelView({ flights, trains }: { flights: Flight[]; trains: TrainLeg[]
     { id: "inbound-trains", label: "Rück-Züge" },
   ];
 
+  async function checkStatus(leg: TrainLeg, orderedLegs: TrainLeg[]) {
+    setRailState((current) => ({
+      ...current,
+      [leg.id]: { ...current[leg.id], statusLoading: true, statusError: undefined },
+    }));
+    try {
+      const response = await fetch("/api/rail/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(railLookup(leg, orderedLegs)),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Live-Status konnte nicht geladen werden.");
+      setRailState((current) => ({
+        ...current,
+        [leg.id]: {
+          ...current[leg.id],
+          status: result as RailStatusResult,
+          statusLoading: false,
+          statusError: undefined,
+        },
+      }));
+    } catch (error) {
+      setRailState((current) => ({
+        ...current,
+        [leg.id]: {
+          ...current[leg.id],
+          statusLoading: false,
+          statusError: error instanceof Error ? error.message : "Live-Status konnte nicht geladen werden.",
+        },
+      }));
+    }
+  }
+
+  async function findAlternatives(leg: TrainLeg, orderedLegs: TrainLeg[]) {
+    setRailState((current) => ({
+      ...current,
+      [leg.id]: { ...current[leg.id], alternativesLoading: true, alternativesError: undefined },
+    }));
+    try {
+      const response = await fetch("/api/rail/alternatives", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(railLookup(leg, orderedLegs)),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Alternativen konnten nicht geladen werden.");
+      setRailState((current) => ({
+        ...current,
+        [leg.id]: {
+          ...current[leg.id],
+          alternatives: result as RailAlternativesResult,
+          alternativesLoading: false,
+          alternativesError: undefined,
+        },
+      }));
+    } catch (error) {
+      setRailState((current) => ({
+        ...current,
+        [leg.id]: {
+          ...current[leg.id],
+          alternativesLoading: false,
+          alternativesError: error instanceof Error ? error.message : "Alternativen konnten nicht geladen werden.",
+        },
+      }));
+    }
+  }
+
   return (
     <div className="grid gap-5">
-      <section className="rounded-[8px] border border-[#d7e3dc] bg-white p-4 shadow-sm">
+      <section className="ios-glass-card rounded-[24px] p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <SectionTitle kicker="Reise-Zentrale" title="Reise" />
-          <button
-            className="rounded-[8px] bg-[#125f68] px-4 py-3 text-sm font-black text-white transition hover:bg-[#0e4d54]"
-            onClick={() =>
-              setLiveCheckedAt(
-                new Intl.DateTimeFormat("de-DE", { dateStyle: "short", timeStyle: "short" }).format(new Date()),
-              )
-            }
-            type="button"
-          >
-            DB-Live prüfen
-          </button>
+          {visibleTrains.length > 0 && (
+            <button
+              className="min-h-11 rounded-[14px] bg-[#125f68] px-4 py-2.5 text-sm font-black text-white transition active:scale-[0.98] hover:bg-[#0e4d54] disabled:cursor-wait disabled:opacity-60"
+              disabled={checkingVisible}
+              onClick={() => {
+                void Promise.allSettled(visibleTrains.map((leg) => checkStatus(leg, visibleTrains)));
+              }}
+              type="button"
+            >
+              {checkingVisible ? "Prüft Züge..." : "Alle sichtbaren Züge prüfen"}
+            </button>
+          )}
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
           {tabs.map((tab) => (
@@ -2432,17 +2549,21 @@ function TravelView({ flights, trains }: { flights: Flight[]; trains: TrainLeg[]
             </button>
           ))}
         </div>
-        <p className="mt-3 text-sm font-semibold text-[#5b6f68]">
-          {liveCheckedAt
-            ? `DB-Check vorbereitet: ${liveCheckedAt}. Status/Alternativen werden nur über die Buttons geöffnet.`
-            : "Live-Daten werden nicht im Hintergrund geladen. Erst der Button öffnet die manuelle Prüfung."}
+        <p className="mt-3 rounded-[14px] bg-white/58 px-3 py-2.5 text-sm font-semibold leading-6 text-[#5b6f68]">
+          Keine Hintergrundabfragen: Live-Status und Alternativen werden nur nach eurem Tippen geladen.
         </p>
       </section>
 
       {activeTab === "outbound-trains" && (
         <section className="grid gap-4 lg:grid-cols-2">
           {outboundTrains.map((leg) => (
-            <TrainLegCard key={leg.id} leg={leg} liveCheckedAt={liveCheckedAt} />
+            <TrainLegCard
+              key={leg.id}
+              leg={leg}
+              onCheckStatus={() => checkStatus(leg, outboundTrains)}
+              onFindAlternatives={() => findAlternatives(leg, outboundTrains)}
+              state={railState[leg.id]}
+            />
           ))}
         </section>
       )}
@@ -2450,7 +2571,13 @@ function TravelView({ flights, trains }: { flights: Flight[]; trains: TrainLeg[]
       {activeTab === "inbound-trains" && (
         <section className="grid gap-4 lg:grid-cols-2">
           {inboundTrains.map((leg) => (
-            <TrainLegCard key={leg.id} leg={leg} liveCheckedAt={liveCheckedAt} />
+            <TrainLegCard
+              key={leg.id}
+              leg={leg}
+              onCheckStatus={() => checkStatus(leg, inboundTrains)}
+              onFindAlternatives={() => findAlternatives(leg, inboundTrains)}
+              state={railState[leg.id]}
+            />
           ))}
         </section>
       )}
@@ -3558,12 +3685,51 @@ function FlightCard({ flight }: { flight: Flight }) {
   );
 }
 
-function TrainLegCard({ leg, liveCheckedAt }: { leg: TrainLeg; liveCheckedAt?: string }) {
+function railStatusLabel(status?: RailStatusResult) {
+  if (!status) return "nicht geprüft";
+  if (status.state === "cancelled") return "Ausfall";
+  if (status.state === "delayed") return "verspätet";
+  if (status.state === "on_time") return "pünktlich";
+  if (status.state === "scheduled") return "nur Fahrplan";
+  return "unbekannt";
+}
+
+function railStatusClass(status?: RailStatusResult) {
+  if (status?.state === "cancelled") return "bg-[#ffe4dc] text-[#8c3219]";
+  if (status?.state === "delayed") return "bg-[#fff0c9] text-[#76510c]";
+  if (status?.state === "on_time") return "bg-[#dff6ed] text-[#125f68]";
+  return "bg-[#edf1ee] text-[#5b6f68]";
+}
+
+function delayLabel(delay: number | null, realtime: boolean) {
+  if (!realtime) return "keine Echtzeit";
+  if (delay === null) return "unbekannt";
+  if (delay <= 0) return "pünktlich";
+  return `+${delay} Min.`;
+}
+
+function TrainLegCard({
+  leg,
+  onCheckStatus,
+  onFindAlternatives,
+  state,
+}: {
+  leg: TrainLeg;
+  onCheckStatus: () => Promise<void>;
+  onFindAlternatives: () => Promise<void>;
+  state?: RailLegUiState;
+}) {
   const orderCode = trainOrderCode(leg);
   const connectionUrl = bahnConnectionUrl(leg);
+  const status = state?.status;
+  const alternatives = state?.alternatives;
+  const checkedAt = status
+    ? new Intl.DateTimeFormat("de-DE", { dateStyle: "short", timeStyle: "short" }).format(new Date(status.checkedAt))
+    : "";
 
   return (
-    <article className="rounded-[8px] border border-[#d7e3dc] bg-white p-4 shadow-sm">
+    <article className="ios-glass-card overflow-hidden rounded-[24px]">
+      <div className="p-4">
       <VehicleImage alt={leg.train} src={trainVehicleImage(leg)} />
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -3571,7 +3737,9 @@ function TrainLegCard({ leg, liveCheckedAt }: { leg: TrainLeg; liveCheckedAt?: s
           <h3 className="mt-1 truncate text-xl font-black text-[#0e302e]">{leg.section}</h3>
           <p className="mt-1 text-sm font-bold text-[#357179]">{leg.train}</p>
         </div>
-        <StatusPill>{liveCheckedAt ? "geprüft" : "offen"}</StatusPill>
+        <span className={classNames("shrink-0 rounded-full px-3 py-1.5 text-xs font-black", railStatusClass(status))}>
+          {state?.statusLoading ? "prüft..." : railStatusLabel(status)}
+        </span>
       </div>
       <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
         <Fact label="Datum" value={leg.date} />
@@ -3582,34 +3750,172 @@ function TrainLegCard({ leg, liveCheckedAt }: { leg: TrainLeg; liveCheckedAt?: s
         <Fact label="Preis/Personen" value={`${leg.price} · 2 Personen`} />
       </div>
       <p className="mt-3 text-sm font-medium text-[#44635b]">{leg.note}</p>
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className="mt-4 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+        <button
+          className="min-h-11 rounded-[14px] bg-[#125f68] px-3 py-2.5 text-sm font-black text-white transition active:scale-[0.98] hover:bg-[#0e4d54] disabled:cursor-wait disabled:opacity-60"
+          disabled={state?.statusLoading}
+          onClick={() => void onCheckStatus()}
+          type="button"
+        >
+          {state?.statusLoading ? "Live wird geladen..." : status ? "Live aktualisieren" : "Live-Status abrufen"}
+        </button>
+        <button
+          className="min-h-11 rounded-[14px] bg-[#e7f4ee] px-3 py-2.5 text-sm font-black text-[#125f68] transition active:scale-[0.98] hover:bg-[#dcebe3] disabled:cursor-wait disabled:opacity-60"
+          disabled={state?.alternativesLoading}
+          onClick={() => void onFindAlternatives()}
+          type="button"
+        >
+          {state?.alternativesLoading ? "Sucht..." : alternatives ? "Alternativen aktualisieren" : "Alternative suchen"}
+        </button>
         <a
-          className="rounded-[8px] bg-[#125f68] px-4 py-3 text-sm font-black text-white transition hover:bg-[#0e4d54]"
+          className="min-h-11 rounded-[14px] bg-white/72 px-3 py-2.5 text-center text-sm font-black text-[#34554e] transition hover:bg-white"
           href={connectionUrl}
           rel="noreferrer"
           target="_blank"
         >
-          DB-Status
-        </a>
-        <a
-          className="rounded-[8px] bg-[#e7f4ee] px-4 py-3 text-sm font-black text-[#125f68] transition hover:bg-[#dcebe3]"
-          href={connectionUrl}
-          rel="noreferrer"
-          target="_blank"
-        >
-          Alternativen prüfen
+          Bei DB öffnen
         </a>
         <CopyOrderButton code={orderCode} />
       </div>
-      <details className="mt-4 rounded-[8px] bg-[#eff6f2] p-3">
+      {state?.statusError && (
+        <p className="mt-3 rounded-[14px] bg-[#fff0eb] px-3 py-2.5 text-sm font-bold text-[#8c3219]" role="alert">
+          {state.statusError}
+        </p>
+      )}
+      {state?.alternativesError && (
+        <p className="mt-3 rounded-[14px] bg-[#fff0eb] px-3 py-2.5 text-sm font-bold text-[#8c3219]" role="alert">
+          {state.alternativesError}
+        </p>
+      )}
+      <details className="mt-4 rounded-[14px] bg-[#eff6f2] p-3">
         <summary className="cursor-pointer text-sm font-black text-[#0e302e]">Details & Bahn-Checkliste</summary>
         <ul className="mt-3 grid gap-2 text-sm font-semibold text-[#44635b]">
-          <li>Gleiswechsel prüfen, sobald DB-Live geöffnet wurde.</li>
+          <li>Gleiswechsel und Echtzeitstatus kurz vor Abfahrt nochmals prüfen.</li>
           <li>Zugbindung beachten; bei erwarteter Zielverspätung ab 20 Minuten Alternativen prüfen.</li>
           <li>Ticket und Auftragscode offline verfügbar halten.</li>
-          <li>{liveCheckedAt ? `Zuletzt manuell angestoßen: ${liveCheckedAt}.` : "Noch nicht live geprüft."}</li>
+          <li>{checkedAt ? `Zuletzt manuell geprüft: ${checkedAt}.` : "Noch nicht live geprüft."}</li>
         </ul>
       </details>
+      </div>
+
+      {status && (
+        <section aria-live="polite" className="border-t border-white/70 bg-[#f1f7f3]/72 px-4 py-4">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.14em] text-[#357179]">Live-Ergebnis</p>
+              <h4 className="mt-1 text-lg font-black text-[#0e302e]">{status.train}</h4>
+            </div>
+            <span className={classNames("rounded-full px-3 py-1.5 text-xs font-black", railStatusClass(status))}>
+              {railStatusLabel(status)}
+            </span>
+          </div>
+
+          <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.1em] text-[#789087]">Abfahrt</p>
+              <p className="mt-1 font-black text-[#0e302e]">
+                {status.departure.actual || status.departure.planned} · {delayLabel(status.departure.delayMinutes, status.realtime)}
+              </p>
+              <p className="mt-0.5 font-semibold text-[#5b6f68]">
+                Gleis {status.departure.platform || status.departure.plannedPlatform || "unbekannt"}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.1em] text-[#789087]">Ankunft</p>
+              <p className="mt-1 font-black text-[#0e302e]">
+                {status.arrival.actual || status.arrival.planned || leg.arr} · {delayLabel(status.arrival.delayMinutes, status.realtime)}
+              </p>
+              <p className="mt-0.5 font-semibold text-[#5b6f68]">
+                Gleis {status.arrival.platform || status.arrival.plannedPlatform || "unbekannt"}
+              </p>
+            </div>
+          </div>
+
+          {(status.departure.platformChanged || status.arrival.platformChanged) && (
+            <p className="mt-3 rounded-[14px] bg-[#fff0c9] px-3 py-2.5 text-sm font-black text-[#76510c]">
+              Gleiswechsel erkannt. Bitte Beschilderung am Bahnhof beachten.
+            </p>
+          )}
+
+          {status.recommendation && (
+            <div className="mt-3 flex flex-col gap-2 rounded-[14px] bg-[#fff0c9] px-3 py-3 text-[#76510c] sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm font-black leading-5">{status.recommendation}</p>
+              <button
+                className="min-h-10 shrink-0 rounded-[12px] bg-[#76510c] px-3 py-2 text-xs font-black text-white disabled:opacity-60"
+                disabled={state?.alternativesLoading}
+                onClick={() => void onFindAlternatives()}
+                type="button"
+              >
+                Alternativen prüfen
+              </button>
+            </div>
+          )}
+
+          {status.alerts.length > 0 && (
+            <div className="mt-3 border-t border-[#d7e3dc] pt-3">
+              <p className="text-xs font-black uppercase tracking-[0.12em] text-[#789087]">Betriebsmeldungen</p>
+              <div className="mt-2 grid gap-2">
+                {status.alerts.map((alert) => (
+                  <div key={`${alert.title}-${alert.description || ""}`}>
+                    <p className="text-sm font-black text-[#0e302e]">{alert.title}</p>
+                    {alert.description && <p className="mt-0.5 text-sm font-semibold leading-5 text-[#5b6f68]">{alert.description}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <p className="mt-3 text-xs font-semibold leading-5 text-[#789087]">{status.sourceNote}</p>
+        </section>
+      )}
+
+      {alternatives && (
+        <section aria-live="polite" className="border-t border-white/70 bg-white/58 px-4 py-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.14em] text-[#357179]">Manuelle Suche</p>
+              <h4 className="mt-1 text-lg font-black text-[#0e302e]">Alternative Verbindungen</h4>
+            </div>
+            <span className="text-sm font-black text-[#125f68]">{alternatives.alternatives.length}</span>
+          </div>
+
+          {alternatives.alternatives.length === 0 ? (
+            <p className="mt-3 text-sm font-semibold leading-6 text-[#5b6f68]">{alternatives.sourceNote}</p>
+          ) : (
+            <div className="mt-3 divide-y divide-[#d7e3dc]">
+              {alternatives.alternatives.map((alternative) => (
+                <div className="py-3 first:pt-0 last:pb-0" key={alternative.id}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-lg font-black tabular-nums text-[#0e302e]">
+                        {alternative.departure} → {alternative.arrival}
+                      </p>
+                      <p className="mt-1 truncate text-sm font-bold text-[#357179]">
+                        {alternative.trains.join(" · ") || "Bahnverbindung"}
+                      </p>
+                    </div>
+                    <a
+                      className="min-h-10 shrink-0 rounded-[12px] bg-[#125f68] px-3 py-2 text-xs font-black text-white"
+                      href={alternative.bookingUrl}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      Öffnen
+                    </a>
+                  </div>
+                  <p className="mt-2 text-sm font-semibold text-[#5b6f68]">
+                    {alternative.durationMinutes} Min. · {alternative.transfers === 0 ? "direkt" : `${alternative.transfers} Umstieg${alternative.transfers === 1 ? "" : "e"}`}
+                    {alternative.fromPlatform ? ` · ab Gleis ${alternative.fromPlatform}` : ""}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+          {alternatives.alternatives.length > 0 && (
+            <p className="mt-3 text-xs font-semibold leading-5 text-[#789087]">{alternatives.sourceNote}</p>
+          )}
+        </section>
+      )}
     </article>
   );
 }

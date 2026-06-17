@@ -86,6 +86,9 @@ type TrainRow = {
   arr_platform: string | null;
   total_price: string | null;
   note: string | null;
+  from_station_id?: string | null;
+  to_station_id?: string | null;
+  timezone?: string | null;
 };
 
 type RouteRow = {
@@ -311,6 +314,9 @@ function mapTrain(row: TrainRow): TrainLeg {
     arrPlatform: row.arr_platform ?? "",
     price: row.total_price ?? "",
     note: row.note ?? "",
+    fromStationId: row.from_station_id ?? undefined,
+    toStationId: row.to_station_id ?? undefined,
+    timeZone: row.timezone ?? "Europe/Berlin",
   };
 }
 

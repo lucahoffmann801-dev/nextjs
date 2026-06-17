@@ -75,6 +75,9 @@ export type TrainLeg = {
   arrPlatform: string;
   price: string;
   note: string;
+  fromStationId?: string;
+  toStationId?: string;
+  timeZone?: string;
 };
 
 export type Flight = {
