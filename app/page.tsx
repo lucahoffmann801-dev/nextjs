@@ -80,9 +80,6 @@ const views: { id: View; label: string }[] = [
   { id: "kosten", label: "Kosten" },
   { id: "reise", label: "Reise" },
   { id: "routen", label: "Routen" },
-  { id: "karte", label: "Karte" },
-  { id: "guide", label: "Guide" },
-  { id: "packen", label: "Packen" },
 ];
 
 const heroImage =
@@ -1419,7 +1416,7 @@ export default function Home() {
         className="fixed inset-x-0 bottom-0 z-50 border-t border-[#d7e3dc] bg-[#fbfdf9]/95 px-1 pt-1.5 shadow-[0_-12px_30px_rgba(14,48,46,0.12)] backdrop-blur-xl md:hidden"
         style={{ paddingBottom: "max(6px, env(safe-area-inset-bottom))" }}
       >
-        <div className="mx-auto grid max-w-md grid-cols-7 gap-0.5">
+        <div className="mx-auto grid max-w-md grid-cols-4 gap-0.5">
           {views.map((item) => (
             <button
               aria-current={view === item.id ? "page" : undefined}
