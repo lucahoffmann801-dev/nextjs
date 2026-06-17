@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { FormEvent, ReactNode } from "react";
+import type { CSSProperties, FormEvent, PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import {
   categorySummary as fallbackCategorySummary,
   dashboard as fallbackDashboard,
@@ -1102,17 +1102,20 @@ function useBodyScrollLock(locked: boolean) {
   useEffect(() => {
     if (!locked) return;
     const scrollY = window.scrollY;
+    const previousHtmlOverscroll = document.documentElement.style.overscrollBehavior;
     const previousPosition = document.body.style.position;
     const previousTop = document.body.style.top;
     const previousWidth = document.body.style.width;
     const previousOverflow = document.body.style.overflow;
 
+    document.documentElement.style.overscrollBehavior = "none";
     document.body.style.position = "fixed";
     document.body.style.top = `-${scrollY}px`;
     document.body.style.width = "100%";
     document.body.style.overflow = "hidden";
 
     return () => {
+      document.documentElement.style.overscrollBehavior = previousHtmlOverscroll;
       document.body.style.position = previousPosition;
       document.body.style.top = previousTop;
       document.body.style.width = previousWidth;
@@ -1520,12 +1523,14 @@ export default function Home() {
         }}
         saving={saving}
       />
-      <QuickExpenseSheet
-        onClose={() => setQuickExpenseOpen(false)}
-        onCreateExpense={createExpense}
-        open={quickExpenseOpen}
-        saving={saving}
-      />
+      {quickExpenseOpen && (
+        <QuickExpenseSheet
+          onClose={() => setQuickExpenseOpen(false)}
+          onCreateExpense={createExpense}
+          open
+          saving={saving}
+        />
+      )}
     </main>
   );
 }
@@ -2276,6 +2281,57 @@ function QuickExpenseSheet({
   saving: boolean;
 }) {
   useBodyScrollLock(open);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const dragState = useRef({
+    pointerId: -1,
+    startY: 0,
+    currentY: 0,
+    startedAt: 0,
+  });
+  const suppressHandleClick = useRef(false);
+  const [dragY, setDragY] = useState(0);
+  const [dragging, setDragging] = useState(false);
+
+  function startSheetDrag(event: ReactPointerEvent<HTMLButtonElement>) {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    suppressHandleClick.current = false;
+    dragState.current = {
+      pointerId: event.pointerId,
+      startY: event.clientY,
+      currentY: event.clientY,
+      startedAt: performance.now(),
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setDragging(true);
+  }
+
+  function moveSheetDrag(event: ReactPointerEvent<HTMLButtonElement>) {
+    if (dragState.current.pointerId !== event.pointerId) return;
+    dragState.current.currentY = event.clientY;
+    const distance = Math.max(0, event.clientY - dragState.current.startY);
+    if (distance > 4) suppressHandleClick.current = true;
+    setDragY(distance);
+  }
+
+  function finishSheetDrag(event: ReactPointerEvent<HTMLButtonElement>) {
+    if (dragState.current.pointerId !== event.pointerId) return;
+    const distance = Math.max(0, dragState.current.currentY - dragState.current.startY);
+    const elapsed = Math.max(1, performance.now() - dragState.current.startedAt);
+    const velocity = distance / elapsed;
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    dragState.current.pointerId = -1;
+    setDragging(false);
+
+    if (distance >= 88 || velocity >= 0.55) {
+      setDragY(panelRef.current?.offsetHeight ?? window.innerHeight);
+      window.setTimeout(onClose, 140);
+      return;
+    }
+    setDragY(0);
+  }
 
   if (!open) return null;
 
@@ -2289,10 +2345,27 @@ function QuickExpenseSheet({
         aria-label="Ausgabe eintragen"
         aria-modal="true"
         className="quick-sheet quick-sheet-panel max-h-[min(92dvh,calc(100dvh-24px))] w-full max-w-xl overflow-y-auto rounded-t-[30px] border border-white/64 bg-[#fbfdf9]/92 p-4 pb-[calc(18px+env(safe-area-inset-bottom))] shadow-[0_-18px_70px_rgba(0,0,0,0.28)] sm:max-h-[86vh] sm:rounded-[30px]"
+        data-dragging={dragging}
         onClick={(event) => event.stopPropagation()}
+        ref={panelRef}
         role="dialog"
+        style={{ "--sheet-drag-y": `${dragY}px` } as CSSProperties}
       >
-        <div className="mx-auto mb-2 h-1.5 w-11 rounded-full bg-[#cfd9d3] sm:hidden" />
+        <button
+          aria-label="Ausgabenfenster nach unten ziehen oder schließen"
+          className="sheet-drag-handle -mx-1 -mt-2 mb-1 flex h-8 w-[calc(100%+8px)] touch-none items-center justify-center sm:hidden"
+          onClick={() => {
+            if (!suppressHandleClick.current) onClose();
+            suppressHandleClick.current = false;
+          }}
+          onPointerCancel={finishSheetDrag}
+          onPointerDown={startSheetDrag}
+          onPointerMove={moveSheetDrag}
+          onPointerUp={finishSheetDrag}
+          type="button"
+        >
+          <span className="h-1.5 w-12 rounded-full bg-[#bdcbc4] shadow-[inset_0_1px_1px_rgba(255,255,255,0.8)]" />
+        </button>
         <div className="flex items-center justify-between px-1 pb-1">
           <p className="text-lg font-black text-[#0e302e]">Ausgabe eintragen</p>
           <button
