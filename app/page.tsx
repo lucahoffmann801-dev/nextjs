@@ -2134,7 +2134,7 @@ function CostsView({
   saving: boolean;
 }) {
   return (
-    <div className="grid gap-5">
+    <div className="grid gap-5 overflow-x-clip px-2 sm:px-0">
       <section className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
         <BalancePanel dashboard={dashboard} expenses={expenses} fixedCosts={fixedCosts} />
         <div className="ios-glass-card rounded-[24px] p-4">
