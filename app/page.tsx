@@ -3905,6 +3905,11 @@ function PackView({
 }
 
 function BalancePanel({ dashboard }: { dashboard: DashboardState }) {
+  const totalExpenses = Math.max(0, dashboard.totalBudget);
+  const fixedExpenses = Math.max(0, dashboard.fix.amount);
+  const tripExpenses = Math.max(0, dashboard.onTrip.amount);
+  const fixedPercent = totalExpenses > 0 ? Math.min(100, (fixedExpenses / totalExpenses) * 100) : 0;
+
   return (
     <section className="ios-glass-dark rounded-[24px] p-5 text-white">
       <p className="text-sm font-bold uppercase tracking-[0.18em] text-[#9fe0d5]">
@@ -3912,14 +3917,36 @@ function BalancePanel({ dashboard }: { dashboard: DashboardState }) {
       </p>
       <h3 className="mt-3 text-4xl font-black">{dashboard.settlementText}</h3>
       <p className="mt-2 text-6xl font-black leading-none">{money(dashboard.settlementAmount)}</p>
-      <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
-        <div className="rounded-[8px] bg-white/10 p-3">
-          <p className="font-bold text-[#b8f4eb]">Luca Anteil</p>
-          <p className="mt-1 text-xl font-black">{money(dashboard.lucaShare)}</p>
+      <div className="mt-5 flex items-center justify-between gap-4 rounded-[18px] bg-white/10 p-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="font-bold text-[#b8f4eb]">Gesamtausgaben</p>
+            <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-[0.12em] text-white/60">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#9fe0d5]" />
+              Live
+            </span>
+          </div>
+          <p className="mt-1 text-3xl font-black tabular-nums">{money(totalExpenses)}</p>
+          <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs font-bold text-white/65">
+            <span>Fix {money(fixedExpenses)}</span>
+            <span>Vor Ort {money(tripExpenses)}</span>
+          </div>
         </div>
-        <div className="rounded-[8px] bg-white/10 p-3">
-          <p className="font-bold text-[#b8f4eb]">Jan Anteil</p>
-          <p className="mt-1 text-xl font-black">{money(dashboard.janShare)}</p>
+        <div
+          aria-label={`${Math.round(fixedPercent)} Prozent Fixkosten, ${Math.round(100 - fixedPercent)} Prozent Ausgaben vor Ort`}
+          className="relative h-20 w-20 shrink-0 rounded-full shadow-[0_8px_24px_rgba(0,0,0,0.18)]"
+          role="img"
+          style={{
+            background: `conic-gradient(#9fe0d5 0 ${fixedPercent}%, #f0b66f ${fixedPercent}% 100%)`,
+          }}
+        >
+          <div className="absolute inset-[8px] grid place-items-center rounded-full bg-[#164f51]">
+            <span className="text-center text-[10px] font-black uppercase leading-tight tracking-[0.08em] text-white/75">
+              Kosten
+              <br />
+              gesamt
+            </span>
+          </div>
         </div>
       </div>
     </section>
