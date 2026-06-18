@@ -97,6 +97,21 @@ type ToastState = {
   detail?: string;
   tone?: "success" | "error" | "celebrate";
 };
+type CostBreakdownPhase = "fixed" | "trip";
+type CostBreakdownEntry = {
+  label: string;
+  amount: number;
+  meta: string;
+};
+type CostBreakdownItem = {
+  id: string;
+  phase: CostBreakdownPhase;
+  label: string;
+  amount: number;
+  icon: string;
+  color: string;
+  entries: CostBreakdownEntry[];
+};
 
 const views: { id: View; label: string }[] = [
   { id: "home", label: "Home" },
@@ -315,6 +330,77 @@ const expenseSplitOptions: Array<{ value: SplitPreset; label: string; luca: numb
   { value: "luca_full", label: "Luca zahlt komplett", luca: 1, jan: 0 },
   { value: "custom", label: "Eigener Split", luca: 0.5, jan: 0.5 },
 ];
+
+const costCategoryVisuals = [
+  { terms: ["flug"], icon: "✈️", color: "#7dd3fc" },
+  { terms: ["hotel", "unterkunft"], icon: "🏨", color: "#c4b5fd" },
+  { terms: ["mietwagen", "auto"], icon: "🚙", color: "#fdba74" },
+  { terms: ["bahn", "zug"], icon: "🚆", color: "#86efac" },
+  { terms: ["tanken", "benzin", "diesel"], icon: "⛽", color: "#fde047" },
+  { terms: ["restaurant", "cafe", "essen"], icon: "🍽️", color: "#fca5a5" },
+  { terms: ["supermarkt", "lebensmittel"], icon: "🛒", color: "#67e8f9" },
+  { terms: ["parken", "maut"], icon: "🅿️", color: "#94a3b8" },
+  { terms: ["strand", "liegen", "schirme"], icon: "🏖️", color: "#5eead4" },
+  { terms: ["ausflug", "eintritt"], icon: "🎟️", color: "#f0abfc" },
+  { terms: ["einkauf", "shopping"], icon: "🛍️", color: "#f9a8d4" },
+  { terms: ["apotheke", "notfall"], icon: "💊", color: "#f87171" },
+  { terms: ["taxi", "opnv", "bus"], icon: "🚕", color: "#a7f3d0" },
+  { terms: ["sonstig"], icon: "📦", color: "#d6d3d1" },
+];
+
+function costCategoryVisual(category: string) {
+  const normalized = category
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "");
+  return costCategoryVisuals.find((item) => item.terms.some((term) => normalized.includes(term))) ?? {
+    icon: "💶",
+    color: "#e5e7eb",
+  };
+}
+
+function buildCostBreakdown(fixedCosts: FixedCost[], expenses: ExpenseItem[]) {
+  const groups = new Map<string, CostBreakdownItem>();
+
+  function addEntry(phase: CostBreakdownPhase, label: string, amount: number, entry: CostBreakdownEntry) {
+    if (!Number.isFinite(amount) || amount <= 0) return;
+    const id = `${phase}:${label.toLowerCase()}`;
+    const visual = costCategoryVisual(label);
+    const current = groups.get(id) ?? {
+      id,
+      phase,
+      label,
+      amount: 0,
+      icon: visual.icon,
+      color: visual.color,
+      entries: [],
+    };
+    current.amount += amount;
+    current.entries.push(entry);
+    groups.set(id, current);
+  }
+
+  for (const cost of fixedCosts) {
+    addEntry("fixed", cost.area, cost.amount, {
+      label: cost.kind,
+      amount: cost.amount,
+      meta: [cost.date, `${cost.paidBy} bezahlt`].filter(Boolean).join(" · "),
+    });
+  }
+
+  for (const expense of expenses) {
+    if (expense.isSettlement) continue;
+    addEntry("trip", expense.category, expense.amount, {
+      label: expense.note.trim() || expense.category,
+      amount: expense.amount,
+      meta: [expense.travelDay, `${expense.paidBy} bezahlt`].filter(Boolean).join(" · "),
+    });
+  }
+
+  return Array.from(groups.values())
+    .map((item) => ({ ...item, amount: Math.round(item.amount * 100) / 100 }))
+    .sort((a, b) => b.amount - a.amount);
+}
 
 const hotelPoint: RoutePoint = {
   id: "hotel-base",
@@ -2048,7 +2134,7 @@ function CostsView({
   return (
     <div className="grid gap-5">
       <section className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
-        <BalancePanel dashboard={dashboard} />
+        <BalancePanel dashboard={dashboard} expenses={expenses} fixedCosts={fixedCosts} />
         <div className="ios-glass-card rounded-[24px] p-4">
           <SectionTitle kicker="Abrechnung" title="Live-Summen" />
           <div className="mt-4 grid gap-3">
@@ -3904,11 +3990,40 @@ function PackView({
   );
 }
 
-function BalancePanel({ dashboard }: { dashboard: DashboardState }) {
-  const totalExpenses = Math.max(0, dashboard.totalBudget);
-  const fixedExpenses = Math.max(0, dashboard.fix.amount);
-  const tripExpenses = Math.max(0, dashboard.onTrip.amount);
-  const fixedPercent = totalExpenses > 0 ? Math.min(100, (fixedExpenses / totalExpenses) * 100) : 0;
+function BalancePanel({
+  dashboard,
+  expenses,
+  fixedCosts,
+}: {
+  dashboard: DashboardState;
+  expenses: ExpenseItem[];
+  fixedCosts: FixedCost[];
+}) {
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const breakdown = useMemo(() => buildCostBreakdown(fixedCosts, expenses), [expenses, fixedCosts]);
+  const fixedBreakdown = breakdown.filter((item) => item.phase === "fixed");
+  const tripBreakdown = breakdown.filter((item) => item.phase === "trip");
+  const fixedExpenses = fixedBreakdown.reduce((sum, item) => sum + item.amount, 0);
+  const tripExpenses = tripBreakdown.reduce((sum, item) => sum + item.amount, 0);
+  const calculatedTotal = fixedExpenses + tripExpenses;
+  const totalExpenses = calculatedTotal > 0 ? calculatedTotal : Math.max(0, dashboard.totalBudget);
+  let chartCursor = 0;
+  const chartGradient =
+    breakdown.length > 0 && totalExpenses > 0
+      ? `conic-gradient(${breakdown
+          .map((item) => {
+            const start = chartCursor;
+            chartCursor += (item.amount / totalExpenses) * 100;
+            return `${item.color} ${start}% ${chartCursor}%`;
+          })
+          .join(", ")})`
+      : "conic-gradient(rgba(255,255,255,0.18) 0 100%)";
+  const chartLabel =
+    breakdown.length > 0
+      ? breakdown
+          .map((item) => `${item.label} ${Math.round((item.amount / totalExpenses) * 100)} Prozent`)
+          .join(", ")
+      : "Noch keine Ausgaben";
 
   return (
     <section className="ios-glass-dark rounded-[24px] p-5 text-white">
@@ -3917,38 +4032,168 @@ function BalancePanel({ dashboard }: { dashboard: DashboardState }) {
       </p>
       <h3 className="mt-3 text-4xl font-black">{dashboard.settlementText}</h3>
       <p className="mt-2 text-6xl font-black leading-none">{money(dashboard.settlementAmount)}</p>
-      <div className="mt-5 flex items-center justify-between gap-4 rounded-[18px] bg-white/10 p-4">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <p className="font-bold text-[#b8f4eb]">Gesamtausgaben</p>
-            <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-[0.12em] text-white/60">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#9fe0d5]" />
-              Live
-            </span>
+      <div className="mt-5 rounded-[18px] bg-white/10 p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <p className="font-bold text-[#b8f4eb]">Wofür wurde Geld ausgegeben?</p>
+              <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-[0.12em] text-white/60">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#9fe0d5]" />
+                Live
+              </span>
+            </div>
+            <p className="mt-1 text-3xl font-black tabular-nums">{money(totalExpenses)}</p>
           </div>
-          <p className="mt-1 text-3xl font-black tabular-nums">{money(totalExpenses)}</p>
-          <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs font-bold text-white/65">
-            <span>Fix {money(fixedExpenses)}</span>
-            <span>Vor Ort {money(tripExpenses)}</span>
+          <span className="rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-white/65">
+            Gesamt
+          </span>
+        </div>
+
+        <div className="mt-4 grid items-center gap-4 min-[480px]:grid-cols-[112px_1fr]">
+          <div
+            aria-label={chartLabel}
+            className="relative mx-auto h-28 w-28 shrink-0 rounded-full shadow-[0_8px_24px_rgba(0,0,0,0.18)] min-[480px]:mx-0"
+            role="img"
+            style={{ background: chartGradient }}
+          >
+            <div className="absolute inset-[13px] grid place-items-center rounded-full bg-[#164f51] text-center">
+              <div>
+                <span className="block text-[9px] font-black uppercase tracking-[0.1em] text-white/55">Gesamt</span>
+                <span className="mt-0.5 block text-sm font-black tabular-nums">{money(totalExpenses)}</span>
+              </div>
+            </div>
+          </div>
+          <div className="grid gap-1.5">
+            {breakdown.slice(0, 5).map((item) => (
+              <div className="flex min-w-0 items-center justify-between gap-2 text-xs" key={item.id}>
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: item.color }} />
+                  <span aria-hidden="true">{item.icon}</span>
+                  <span className="font-bold leading-tight text-white/75">{item.label}</span>
+                </div>
+                <span className="shrink-0 font-black tabular-nums">{money(item.amount)}</span>
+              </div>
+            ))}
+            {breakdown.length > 5 && (
+              <p className="text-[10px] font-bold text-white/50">+ {breakdown.length - 5} weitere Kategorien</p>
+            )}
           </div>
         </div>
-        <div
-          aria-label={`${Math.round(fixedPercent)} Prozent Fixkosten, ${Math.round(100 - fixedPercent)} Prozent Ausgaben vor Ort`}
-          className="relative h-20 w-20 shrink-0 rounded-full shadow-[0_8px_24px_rgba(0,0,0,0.18)]"
-          role="img"
-          style={{
-            background: `conic-gradient(#9fe0d5 0 ${fixedPercent}%, #f0b66f ${fixedPercent}% 100%)`,
-          }}
+
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <div className="rounded-[12px] bg-black/10 px-3 py-2.5">
+            <p className="text-[10px] font-black uppercase tracking-[0.1em] text-white/50">🧳 Im Vorfeld</p>
+            <p className="mt-1 text-base font-black tabular-nums">{money(fixedExpenses)}</p>
+          </div>
+          <div className="rounded-[12px] bg-black/10 px-3 py-2.5">
+            <p className="text-[10px] font-black uppercase tracking-[0.1em] text-white/50">🌴 Vor Ort</p>
+            <p className="mt-1 text-base font-black tabular-nums">{money(tripExpenses)}</p>
+          </div>
+        </div>
+
+        <button
+          aria-controls="cost-breakdown-details"
+          aria-expanded={detailsOpen}
+          className="mt-3 flex min-h-11 w-full items-center justify-between rounded-[12px] border border-white/10 bg-white/8 px-3 text-sm font-black transition hover:bg-white/12 active:scale-[0.99]"
+          onClick={() => setDetailsOpen((open) => !open)}
+          type="button"
         >
-          <div className="absolute inset-[8px] grid place-items-center rounded-full bg-[#164f51]">
-            <span className="text-center text-[10px] font-black uppercase leading-tight tracking-[0.08em] text-white/75">
-              Kosten
-              <br />
-              gesamt
-            </span>
+          <span>{detailsOpen ? "Details schließen" : "Alle Kategorien & Details"}</span>
+          <span
+            aria-hidden="true"
+            className={classNames("text-lg transition-transform", detailsOpen && "rotate-180")}
+          >
+            ⌄
+          </span>
+        </button>
+
+        {detailsOpen && (
+          <div className="mt-3 grid gap-3" id="cost-breakdown-details">
+            <CostBreakdownGroup
+              emptyText="Noch keine Kosten im Vorfeld."
+              items={fixedBreakdown}
+              title="🧳 Im Vorfeld"
+              total={fixedExpenses}
+            />
+            <CostBreakdownGroup
+              emptyText="Noch keine Vor-Ort-Ausgaben. Tanken, Restaurants und weitere Einträge erscheinen hier automatisch."
+              items={tripBreakdown}
+              title="🌴 Vor Ort"
+              total={tripExpenses}
+            />
           </div>
-        </div>
+        )}
       </div>
+    </section>
+  );
+}
+
+function CostBreakdownGroup({
+  emptyText,
+  items,
+  title,
+  total,
+}: {
+  emptyText: string;
+  items: CostBreakdownItem[];
+  title: string;
+  total: number;
+}) {
+  return (
+    <section className="rounded-[14px] bg-black/12 p-3">
+      <div className="flex items-center justify-between gap-3">
+        <h4 className="text-sm font-black">{title}</h4>
+        <p className="text-sm font-black tabular-nums text-[#b8f4eb]">{money(total)}</p>
+      </div>
+      {items.length === 0 ? (
+        <p className="mt-2 text-xs font-semibold leading-relaxed text-white/55">{emptyText}</p>
+      ) : (
+        <div className="mt-2 grid gap-2">
+          {items.map((item) => {
+            const percentage = total > 0 ? (item.amount / total) * 100 : 0;
+            return (
+              <div className="rounded-[12px] bg-white/8 p-2.5" key={item.id}>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span
+                      aria-hidden="true"
+                      className="grid h-8 w-8 shrink-0 place-items-center rounded-[9px] text-base"
+                      style={{ backgroundColor: `${item.color}26` }}
+                    >
+                      {item.icon}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-black">{item.label}</p>
+                      <p className="text-[10px] font-bold text-white/50">{Math.round(percentage)} % dieser Gruppe</p>
+                    </div>
+                  </div>
+                  <p className="shrink-0 text-sm font-black tabular-nums">{money(item.amount)}</p>
+                </div>
+                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
+                  <div
+                    className="h-full rounded-full"
+                    style={{ backgroundColor: item.color, width: `${Math.max(3, percentage)}%` }}
+                  />
+                </div>
+                <div className="mt-2 grid gap-1 border-t border-white/8 pt-2">
+                  {item.entries.map((entry, index) => (
+                    <div
+                      className="flex items-start justify-between gap-3 text-[11px] font-semibold text-white/60"
+                      key={`${item.id}:${entry.label}:${index}`}
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-white/75">{entry.label}</p>
+                        <p className="truncate text-[10px] text-white/40">{entry.meta}</p>
+                      </div>
+                      <span className="shrink-0 tabular-nums">{money(entry.amount)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 }
