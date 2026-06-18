@@ -148,7 +148,7 @@ img {
 
 @media (max-width: 767px) {
   html.ios-manual-shell {
-    --ios-top-space: max(44px, calc(18px + env(safe-area-inset-top)));
+    --ios-top-space: max(44px, calc(18px + var(--ios-safe-top, 0px)));
     height: var(--ios-shell-height, 100svh);
     min-height: 0;
     overflow: hidden;
@@ -186,15 +186,38 @@ img {
   html.ios-manual-shell .mobile-glass-nav {
     position: relative !important;
     inset: auto !important;
+    align-self: end;
+    height: calc(var(--mobile-nav-height) + var(--ios-safe-bottom, 0px));
+    block-size: calc(var(--mobile-nav-height) + var(--ios-safe-bottom, 0px));
+    min-height: calc(var(--mobile-nav-height) + var(--ios-safe-bottom, 0px));
+    max-height: calc(var(--mobile-nav-height) + var(--ios-safe-bottom, 0px));
+    padding-bottom: max(8px, var(--ios-safe-bottom, 0px));
+    padding-left: max(16px, var(--ios-safe-left, 0px));
+    padding-right: max(16px, var(--ios-safe-right, 0px));
   }
 
   html.ios-manual-shell .quick-fab {
     position: absolute !important;
+    bottom: calc(
+      var(--mobile-nav-height) + var(--ios-safe-bottom, 0px) + var(--mobile-floating-gap)
+    );
+    right: max(16px, var(--ios-safe-right, 0px));
   }
 
-  html.ios-manual-shell .ios-toast,
+  html.ios-manual-shell .ios-toast {
+    position: absolute !important;
+    bottom: calc(
+      var(--mobile-nav-height) + var(--ios-safe-bottom, 0px) + var(--mobile-floating-gap)
+    );
+  }
+
   html.ios-manual-shell .ios-viewport-overlay {
     position: absolute !important;
+  }
+
+  html.ios-manual-shell .quick-sheet-panel,
+  html.ios-manual-shell .ios-alert-panel {
+    padding-bottom: calc(18px + var(--ios-safe-bottom, 0px));
   }
 }
 

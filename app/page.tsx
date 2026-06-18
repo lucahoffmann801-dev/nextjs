@@ -1293,6 +1293,33 @@ function isStandaloneWebApp() {
   );
 }
 
+function measureSafeAreaInsets() {
+  const probe = document.createElement("div");
+  probe.setAttribute("aria-hidden", "true");
+  probe.style.cssText = [
+    "position:fixed",
+    "visibility:hidden",
+    "pointer-events:none",
+    "inset:0 auto auto 0",
+    "padding-top:env(safe-area-inset-top)",
+    "padding-right:env(safe-area-inset-right)",
+    "padding-bottom:env(safe-area-inset-bottom)",
+    "padding-left:env(safe-area-inset-left)",
+  ].join(";");
+  document.body.appendChild(probe);
+  const styles = window.getComputedStyle(probe);
+  const value = (property: "paddingTop" | "paddingRight" | "paddingBottom" | "paddingLeft", max: number) =>
+    Math.min(max, Math.max(0, Number.parseFloat(styles[property]) || 0));
+  const insets = {
+    top: value("paddingTop", 64),
+    right: value("paddingRight", 64),
+    bottom: value("paddingBottom", 48),
+    left: value("paddingLeft", 64),
+  };
+  probe.remove();
+  return insets;
+}
+
 function refreshRootViewport(scrollTop = window.scrollY) {
   const root = document.documentElement;
   const scrollingElement = document.scrollingElement;
@@ -1413,7 +1440,17 @@ export default function Home() {
     const standalone = ios && isStandaloneWebApp();
     let keyboardSession = false;
     let animationFrame = 0;
+    let safeAreaFrozen = false;
     const timers = new Set<number>();
+    const freezeSafeArea = () => {
+      if (!ios || safeAreaFrozen) return;
+      const insets = measureSafeAreaInsets();
+      root.style.setProperty("--ios-safe-top", `${insets.top}px`);
+      root.style.setProperty("--ios-safe-right", `${insets.right}px`);
+      root.style.setProperty("--ios-safe-bottom", `${insets.bottom}px`);
+      root.style.setProperty("--ios-safe-left", `${insets.left}px`);
+      safeAreaFrozen = true;
+    };
     const updateManualShell = () => {
       if (!root.classList.contains("ios-manual-shell")) return;
       root.style.setProperty("--ios-shell-height", `${window.innerHeight}px`);
@@ -1424,6 +1461,7 @@ export default function Home() {
         updateManualShell();
         return;
       }
+      freezeSafeArea();
       const previousScrollTop = document.scrollingElement?.scrollTop ?? window.scrollY;
       root.classList.add("ios-manual-shell");
       updateManualShell();
@@ -1490,6 +1528,7 @@ export default function Home() {
       if (document.visibilityState === "visible") syncViewport();
     };
 
+    freezeSafeArea();
     if (standalone) enableManualShell();
     document.addEventListener("focusin", onFocusIn);
     document.addEventListener("focusout", onFocusOut);
@@ -1511,6 +1550,10 @@ export default function Home() {
       vv?.removeEventListener("resize", syncViewport);
       root.classList.remove("ios-manual-shell", "kb-open");
       root.style.removeProperty("--ios-shell-height");
+      root.style.removeProperty("--ios-safe-top");
+      root.style.removeProperty("--ios-safe-right");
+      root.style.removeProperty("--ios-safe-bottom");
+      root.style.removeProperty("--ios-safe-left");
     };
   }, []);
 
