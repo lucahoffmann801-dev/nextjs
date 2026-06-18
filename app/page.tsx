@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -4000,6 +4000,7 @@ function BalancePanel({
   fixedCosts: FixedCost[];
 }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [chartMode, setChartMode] = useState<"all" | "fixed" | "trip">("all");
   const breakdown = useMemo(() => buildCostBreakdown(fixedCosts, expenses), [expenses, fixedCosts]);
   const fixedBreakdown = breakdown.filter((item) => item.phase === "fixed");
   const tripBreakdown = breakdown.filter((item) => item.phase === "trip");
@@ -4007,21 +4008,26 @@ function BalancePanel({
   const tripExpenses = tripBreakdown.reduce((sum, item) => sum + item.amount, 0);
   const calculatedTotal = fixedExpenses + tripExpenses;
   const totalExpenses = calculatedTotal > 0 ? calculatedTotal : Math.max(0, dashboard.totalBudget);
+  const activeBreakdown =
+    chartMode === "fixed" ? fixedBreakdown : chartMode === "trip" ? tripBreakdown : breakdown;
+  const activeSubtotal = activeBreakdown.reduce((sum, item) => sum + item.amount, 0);
+  const activeTotal = chartMode === "all" ? totalExpenses : activeSubtotal;
+  const chartModeLabel = chartMode === "fixed" ? "Im Vorfeld" : chartMode === "trip" ? "Vor Ort" : "Gesamt";
   let chartCursor = 0;
   const chartGradient =
-    breakdown.length > 0 && totalExpenses > 0
-      ? `conic-gradient(${breakdown
+    activeBreakdown.length > 0 && activeTotal > 0
+      ? `conic-gradient(${activeBreakdown
           .map((item) => {
             const start = chartCursor;
-            chartCursor += (item.amount / totalExpenses) * 100;
+            chartCursor += (item.amount / activeTotal) * 100;
             return `${item.color} ${start}% ${chartCursor}%`;
           })
           .join(", ")})`
       : "conic-gradient(rgba(255,255,255,0.18) 0 100%)";
   const chartLabel =
-    breakdown.length > 0
-      ? breakdown
-          .map((item) => `${item.label} ${Math.round((item.amount / totalExpenses) * 100)} Prozent`)
+    activeBreakdown.length > 0
+      ? activeBreakdown
+          .map((item) => `${item.label} ${Math.round((item.amount / activeTotal) * 100)} Prozent`)
           .join(", ")
       : "Noch keine Ausgaben";
 
@@ -4088,8 +4094,8 @@ function BalancePanel({
                 <span className="shrink-0 font-black tabular-nums">{money(item.amount)}</span>
               </div>
             ))}
-            {breakdown.length > 5 && (
-              <p className="text-[10px] font-bold text-white/50">+ {breakdown.length - 5} weitere Kategorien</p>
+            {activeBreakdown.length > 5 && (
+              <p className="text-[10px] font-bold text-white/50">+ {activeBreakdown.length - 5} weitere Kategorien</p>
             )}
           </div>
         </div>
