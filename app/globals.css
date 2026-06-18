@@ -82,6 +82,10 @@ img {
   overflow-x: clip;
 }
 
+.app-scroll-region {
+  display: contents;
+}
+
 .ios-glass-header {
   border-bottom: 1px solid rgba(196, 216, 207, 0.72);
   background:
@@ -140,6 +144,58 @@ img {
   isolation: isolate;
   touch-action: manipulation;
   overflow: hidden;
+}
+
+@media (max-width: 767px) {
+  html.ios-manual-shell {
+    --ios-top-space: max(44px, calc(18px + env(safe-area-inset-top)));
+    height: var(--ios-shell-height, 100svh);
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  html.ios-manual-shell body {
+    height: var(--ios-shell-height, 100svh);
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  html.ios-manual-shell .app-shell {
+    position: relative;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    height: var(--ios-shell-height, 100svh);
+    min-height: 0;
+    padding-bottom: 0;
+    overflow: hidden;
+  }
+
+  html.ios-manual-shell .app-scroll-region {
+    display: block;
+    min-height: 0;
+    overflow-x: clip;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  html.ios-manual-shell .ios-glass-header {
+    position: static !important;
+  }
+
+  html.ios-manual-shell .mobile-glass-nav {
+    position: relative !important;
+    inset: auto !important;
+  }
+
+  html.ios-manual-shell .quick-fab {
+    position: absolute !important;
+  }
+
+  html.ios-manual-shell .ios-toast,
+  html.ios-manual-shell .ios-viewport-overlay {
+    position: absolute !important;
+  }
 }
 
 .mobile-nav-grid {

@@ -1279,6 +1279,20 @@ function isKeyboardField(element: Element | null) {
   );
 }
 
+function isIOSDevice() {
+  return (
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+  );
+}
+
+function isStandaloneWebApp() {
+  return (
+    window.matchMedia("(display-mode: standalone)").matches ||
+    Boolean((navigator as Navigator & { standalone?: boolean }).standalone)
+  );
+}
+
 function refreshRootViewport(scrollTop = window.scrollY) {
   const root = document.documentElement;
   const scrollingElement = document.scrollingElement;
@@ -1362,6 +1376,7 @@ export default function Home() {
     toastTimer.current = setTimeout(() => setToast(null), 3200);
   }
   const contentRef = useRef<HTMLDivElement>(null);
+  const scrollRegionRef = useRef<HTMLDivElement>(null);
   const didMount = useRef(false);
 
   const maxCategoryTotal = useMemo(
@@ -1389,14 +1404,34 @@ export default function Home() {
     return () => window.clearTimeout(timer);
   }, []);
 
-  // iOS Safari can keep stale visual-viewport geometry after the keyboard closes.
-  // Track the actual viewport gap and refresh the root scroller once it expands again.
+  // iOS can leave fixed/sticky layers attached to stale keyboard viewport geometry.
+  // Installed iOS apps therefore use a fixed-height shell with its own content scroller.
   useEffect(() => {
     const root = document.documentElement;
     const vv = window.visualViewport;
+    const ios = isIOSDevice();
+    const standalone = ios && isStandaloneWebApp();
     let keyboardSession = false;
     let animationFrame = 0;
     const timers = new Set<number>();
+    const updateManualShell = () => {
+      if (!root.classList.contains("ios-manual-shell")) return;
+      root.style.setProperty("--ios-shell-height", `${window.innerHeight}px`);
+    };
+    const enableManualShell = () => {
+      if (!ios) return;
+      if (root.classList.contains("ios-manual-shell")) {
+        updateManualShell();
+        return;
+      }
+      const previousScrollTop = document.scrollingElement?.scrollTop ?? window.scrollY;
+      root.classList.add("ios-manual-shell");
+      updateManualShell();
+      window.requestAnimationFrame(() => {
+        const scrollRegion = document.querySelector<HTMLElement>(".app-scroll-region");
+        if (scrollRegion) scrollRegion.scrollTop = previousScrollTop;
+      });
+    };
     const keyboardIsOpen = () => {
       if (!vv) return isKeyboardField(document.activeElement);
       return window.innerHeight - vv.height > 120;
@@ -1410,7 +1445,10 @@ export default function Home() {
       [0, 80, 240].forEach((delay) => {
         const timer = window.setTimeout(() => {
           timers.delete(timer);
-          if (!keyboardIsOpen()) refreshRootViewport();
+          if (!keyboardIsOpen()) {
+            refreshRootViewport();
+            updateManualShell();
+          }
         }, delay);
         timers.add(timer);
       });
@@ -1424,8 +1462,10 @@ export default function Home() {
           keyboardSession = true;
         } else if (keyboardSession) {
           keyboardSession = false;
+          enableManualShell();
           recoverViewport();
         }
+        updateManualShell();
       });
     };
 
@@ -1450,13 +1490,15 @@ export default function Home() {
       if (document.visibilityState === "visible") syncViewport();
     };
 
+    if (standalone) enableManualShell();
     document.addEventListener("focusin", onFocusIn);
     document.addEventListener("focusout", onFocusOut);
     document.addEventListener("visibilitychange", onVisibilityChange);
     window.addEventListener("pageshow", syncViewport);
     window.addEventListener("resize", syncViewport);
+    window.addEventListener("orientationchange", updateManualShell);
     vv?.addEventListener("resize", syncViewport);
-    vv?.addEventListener("scroll", syncViewport);
+    updateManualShell();
     return () => {
       clearTimers();
       window.cancelAnimationFrame(animationFrame);
@@ -1465,9 +1507,10 @@ export default function Home() {
       document.removeEventListener("visibilitychange", onVisibilityChange);
       window.removeEventListener("pageshow", syncViewport);
       window.removeEventListener("resize", syncViewport);
+      window.removeEventListener("orientationchange", updateManualShell);
       vv?.removeEventListener("resize", syncViewport);
-      vv?.removeEventListener("scroll", syncViewport);
-      root.classList.remove("kb-open");
+      root.classList.remove("ios-manual-shell", "kb-open");
+      root.style.removeProperty("--ios-shell-height");
     };
   }, []);
 
@@ -1552,13 +1595,25 @@ export default function Home() {
       return;
     }
 
+    const manualScroller = document.documentElement.classList.contains("ios-manual-shell")
+      ? scrollRegionRef.current
+      : null;
+
     if (view === "home") {
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      if (manualScroller) {
+        manualScroller.scrollTo({ top: 0, behavior: "smooth" });
+      } else {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
       return;
     }
 
     const top = Math.max((contentRef.current?.offsetTop ?? 0) - 72, 0);
-    window.scrollTo({ top, behavior: "smooth" });
+    if (manualScroller) {
+      manualScroller.scrollTo({ top, behavior: "smooth" });
+    } else {
+      window.scrollTo({ top, behavior: "smooth" });
+    }
   }, [view]);
 
   async function createExpense(input: NewExpenseInput) {
@@ -1693,88 +1748,90 @@ export default function Home() {
         </div>
       </header>
 
-      {view === "home" && (
-        <Hero
-          daysLeft={daysLeft}
-          onQuickExpense={() => setQuickExpenseOpen(true)}
-          setView={setView}
-          weather={hotelWeather}
-        />
-      )}
-
-      <div ref={contentRef} className="mx-auto max-w-6xl px-4 py-6 sm:py-8">
-        <div key={view} className="view-enter">
+      <div className="app-scroll-region" ref={scrollRegionRef}>
         {view === "home" && (
-          <HomeView
-            dashboard={appState.dashboard}
-            expenses={appState.expenses}
-            flights={appState.flights}
-            hotelWeather={hotelWeather}
+          <Hero
+            daysLeft={daysLeft}
             onQuickExpense={() => setQuickExpenseOpen(true)}
-            onRefreshWeather={() => void loadHotelWeather(true)}
-            placesCount={tourismPlaces.length}
-            restaurantsCount={creteRestaurants.length}
-            routes={cleanBackendRoutes}
-            savedSmartRoutes={savedSmartRoutes}
-            setGuideMode={setGuideMode}
             setView={setView}
-            trains={appState.trains}
-            weatherCheckedAt={weatherCheckedAt}
-            weatherError={weatherError}
-            weatherLoading={weatherLoading}
+            weather={hotelWeather}
           />
         )}
-        {view === "kosten" && (
-          <CostsView
-            categorySummary={appState.categorySummary}
-            dashboard={appState.dashboard}
-            expenses={appState.expenses}
-            fixedCosts={appState.fixedCosts}
-            maxCategoryTotal={maxCategoryTotal}
-            onCreateExpense={createExpense}
-            onRequestDeleteExpense={setExpenseToDelete}
-            saving={saving}
-          />
-        )}
-        {view === "reise" && <TravelView flights={appState.flights} trains={appState.trains} />}
-        {view === "routen" && (
-          <RoutesView
-            onSaveSmartRoute={saveSmartRoute}
-            places={tourismPlaces}
-            restaurants={creteRestaurants}
-            routes={cleanBackendRoutes}
-            savedSmartRoutes={savedSmartRoutes}
-          />
-        )}
-        {view === "karte" && (
-          <MapView
-            places={tourismPlaces}
-            restaurants={creteRestaurants}
-            savedSmartRoutes={savedSmartRoutes}
-          />
-        )}
-        {view === "guide" && (
-          <GuideView
-            guideMode={guideMode}
-            places={tourismPlaces}
-            restaurants={creteRestaurants}
-            setGuideMode={setGuideMode}
-          />
-        )}
-        {view === "packen" && (
-          <PackView onTogglePack={togglePackItem} packItems={appState.packItems} />
-        )}
-        </div>
 
-        <footer className="mt-8 border-t border-[#d7e3dc] pt-5 text-sm text-[#5b6f68]">
-          <p>
-            {appState.source.kind === "supabase"
-              ? "Daten kommen live aus eurem Reise-Backend."
-              : "Gerade offline, ihr seht den letzten gespeicherten Stand."}{" "}
-            Stand der Planungsdaten: {appState.source.sheetSeed}.
-          </p>
-          <p className="mt-2">Bild: Balos Beach, Wikimedia Commons, CC BY-SA 4.0.</p>
-        </footer>
+        <div ref={contentRef} className="mx-auto max-w-6xl px-4 py-6 sm:py-8">
+          <div key={view} className="view-enter">
+          {view === "home" && (
+            <HomeView
+              dashboard={appState.dashboard}
+              expenses={appState.expenses}
+              flights={appState.flights}
+              hotelWeather={hotelWeather}
+              onQuickExpense={() => setQuickExpenseOpen(true)}
+              onRefreshWeather={() => void loadHotelWeather(true)}
+              placesCount={tourismPlaces.length}
+              restaurantsCount={creteRestaurants.length}
+              routes={cleanBackendRoutes}
+              savedSmartRoutes={savedSmartRoutes}
+              setGuideMode={setGuideMode}
+              setView={setView}
+              trains={appState.trains}
+              weatherCheckedAt={weatherCheckedAt}
+              weatherError={weatherError}
+              weatherLoading={weatherLoading}
+            />
+          )}
+          {view === "kosten" && (
+            <CostsView
+              categorySummary={appState.categorySummary}
+              dashboard={appState.dashboard}
+              expenses={appState.expenses}
+              fixedCosts={appState.fixedCosts}
+              maxCategoryTotal={maxCategoryTotal}
+              onCreateExpense={createExpense}
+              onRequestDeleteExpense={setExpenseToDelete}
+              saving={saving}
+            />
+          )}
+          {view === "reise" && <TravelView flights={appState.flights} trains={appState.trains} />}
+          {view === "routen" && (
+            <RoutesView
+              onSaveSmartRoute={saveSmartRoute}
+              places={tourismPlaces}
+              restaurants={creteRestaurants}
+              routes={cleanBackendRoutes}
+              savedSmartRoutes={savedSmartRoutes}
+            />
+          )}
+          {view === "karte" && (
+            <MapView
+              places={tourismPlaces}
+              restaurants={creteRestaurants}
+              savedSmartRoutes={savedSmartRoutes}
+            />
+          )}
+          {view === "guide" && (
+            <GuideView
+              guideMode={guideMode}
+              places={tourismPlaces}
+              restaurants={creteRestaurants}
+              setGuideMode={setGuideMode}
+            />
+          )}
+          {view === "packen" && (
+            <PackView onTogglePack={togglePackItem} packItems={appState.packItems} />
+          )}
+          </div>
+
+          <footer className="mt-8 border-t border-[#d7e3dc] pt-5 text-sm text-[#5b6f68]">
+            <p>
+              {appState.source.kind === "supabase"
+                ? "Daten kommen live aus eurem Reise-Backend."
+                : "Gerade offline, ihr seht den letzten gespeicherten Stand."}{" "}
+              Stand der Planungsdaten: {appState.source.sheetSeed}.
+            </p>
+            <p className="mt-2">Bild: Balos Beach, Wikimedia Commons, CC BY-SA 4.0.</p>
+          </footer>
+        </div>
       </div>
 
       {!modalOpen && (
@@ -2752,7 +2809,7 @@ function DeleteExpenseDialog({
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-end justify-center bg-[#061f20]/52 p-3 backdrop-blur-sm sm:items-center"
+      className="ios-viewport-overlay fixed inset-0 z-[100] flex items-end justify-center bg-[#061f20]/52 p-3 backdrop-blur-sm sm:items-center"
       onClick={saving ? undefined : onCancel}
       role="presentation"
     >
@@ -2873,7 +2930,7 @@ function QuickExpenseSheet({
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-end justify-center bg-[#082324]/52 p-0 backdrop-blur-sm sm:items-center sm:p-5"
+      className="ios-viewport-overlay fixed inset-0 z-[70] flex items-end justify-center bg-[#082324]/52 p-0 backdrop-blur-sm sm:items-center sm:p-5"
       onClick={onClose}
       role="presentation"
     >
