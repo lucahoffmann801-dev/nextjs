@@ -2134,7 +2134,7 @@ function CostsView({
   saving: boolean;
 }) {
   return (
-    <div className="grid gap-5 overflow-x-clip px-2 sm:px-0">
+    <div className="grid gap-5 overflow-x-clip">
       <section className="grid grid-cols-1 gap-4 lg:grid-cols-[0.8fr_1.2fr]">
         <BalancePanel dashboard={dashboard} expenses={expenses} fixedCosts={fixedCosts} />
         <div className="ios-glass-card rounded-[24px] p-4">
@@ -4056,7 +4056,7 @@ function BalancePanel({
               {(["all", "fixed", "trip"] as const).map((mode) => (
                 <button
                   className={classNames(
-                    "rounded-full px-2 py-1.5 text-[11px] font-black uppercase tracking-[0.06em] transition active:scale-[0.97]",
+                    "whitespace-nowrap rounded-full px-2 py-1.5 text-[11px] font-black uppercase tracking-[0.06em] transition active:scale-[0.97]",
                     chartMode === mode
                       ? "bg-[#9fe0d5] text-[#0d3535] shadow-[0_2px_8px_rgba(0,0,0,0.18)]"
                       : "text-white/70 hover:text-white"
