@@ -2135,7 +2135,7 @@ function CostsView({
 }) {
   return (
     <div className="grid gap-5 overflow-x-clip px-2 sm:px-0">
-      <section className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
+      <section className="grid grid-cols-1 gap-4 lg:grid-cols-[0.8fr_1.2fr]">
         <BalancePanel dashboard={dashboard} expenses={expenses} fixedCosts={fixedCosts} />
         <div className="ios-glass-card rounded-[24px] p-4">
           <SectionTitle kicker="Abrechnung" title="Live-Summen" />
@@ -2147,7 +2147,7 @@ function CostsView({
         </div>
       </section>
 
-      <section className="grid gap-5 lg:grid-cols-[0.95fr_1.05fr]">
+      <section className="grid grid-cols-1 gap-5 lg:grid-cols-[0.95fr_1.05fr]">
         <ExpenseForm onCreateExpense={onCreateExpense} saving={saving} title="Ausgabe eintragen" />
 
         <section className="ios-glass-card rounded-[24px] p-4">
@@ -2172,7 +2172,7 @@ function CostsView({
 
       <SettlementPaymentForm dashboard={dashboard} onCreateExpense={onCreateExpense} saving={saving} />
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {fixedCosts.map((cost) => (
           <FixedCostCard cost={cost} key={`${cost.area}-${cost.kind}`} />
         ))}
@@ -3338,7 +3338,7 @@ function RoutesView({
       {routes.filter((route) => route.status === "Smart").length > 0 && (
         <section>
           <SectionTitle kicker="Gespeichert" title="Smart-Routen aus dem Backend" />
-          <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {routes.filter((route) => route.status === "Smart").map((route) => (
               <RouteCard key={route.id} route={route} />
             ))}
@@ -3884,13 +3884,13 @@ function GuideView({
       </section>
 
       {guideMode === "sights" ? (
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {filteredPlaces.map((place) => (
             <PlaceCard key={place.id} place={place} />
           ))}
         </section>
       ) : (
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {filteredRestaurants.map((restaurant) => (
             <RestaurantCard key={restaurant.id} restaurant={restaurant} />
           ))}
@@ -4232,8 +4232,8 @@ function CategoryBar({ category, max }: { category: CategorySummaryItem; max: nu
   return (
     <div>
       <div className="flex items-end justify-between gap-3">
-        <div>
-          <p className="font-black text-[#0e302e]">{category.name}</p>
+        <div className="min-w-0">
+          <p className="font-black leading-tight text-[#0e302e]">{category.name}</p>
           <p className="text-sm font-semibold text-[#5b6f68]">{saldo}</p>
         </div>
         <p className="shrink-0 text-lg font-black text-[#0e302e]">{money(category.total)}</p>
