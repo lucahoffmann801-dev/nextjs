@@ -1602,6 +1602,7 @@ export default function Home() {
       )}
 
       <div ref={contentRef} className="mx-auto max-w-6xl px-4 py-6 sm:py-8">
+        <div key={view} className="view-enter">
         {view === "home" && (
           <HomeView
             dashboard={appState.dashboard}
@@ -1662,6 +1663,7 @@ export default function Home() {
         {view === "packen" && (
           <PackView onTogglePack={togglePackItem} packItems={appState.packItems} />
         )}
+        </div>
 
         <footer className="mt-8 border-t border-[#d7e3dc] pt-5 text-sm text-[#5b6f68]">
           <p>
@@ -3021,7 +3023,7 @@ function TravelView({ flights, trains }: { flights: Flight[]; trains: TrainLeg[]
             Loutro, Imbros, Plakias und Südküste.
           </p>
           <a
-            className="rounded-[8px] bg-[#125f68] px-4 py-3 text-sm font-black text-white transition hover:bg-[#0e4d54]"
+            className="rounded-[8px] btn-sheen bg-[#125f68] px-4 py-3 text-sm font-black text-white transition hover:bg-[#0e4d54]"
             href={trip.hotelMaps}
             rel="noreferrer"
             target="_blank"
@@ -3158,7 +3160,7 @@ function RoutesView({
         <div className="flex flex-wrap items-start justify-between gap-3">
           <SectionTitle kicker="Smart Route planen" title="Tagesroute automatisch bauen" />
           <button
-            className="rounded-[8px] bg-[#125f68] px-4 py-3 text-sm font-black text-white transition hover:bg-[#0e4d54]"
+            className="rounded-[8px] btn-sheen bg-[#125f68] px-4 py-3 text-sm font-black text-white transition hover:bg-[#0e4d54]"
             disabled={weatherLoading}
             onClick={() => void generateRoute()}
             type="button"
@@ -3303,7 +3305,7 @@ function RoutesView({
           <div className="mt-4 flex flex-wrap gap-2">
             {plannedRoute.mapsLinks.map((link, index) => (
               <a
-                className="rounded-[8px] bg-[#125f68] px-4 py-3 text-sm font-black text-white transition hover:bg-[#0e4d54]"
+                className="rounded-[8px] btn-sheen bg-[#125f68] px-4 py-3 text-sm font-black text-white transition hover:bg-[#0e4d54]"
                 href={link}
                 key={link}
                 rel="noreferrer"
@@ -3417,7 +3419,7 @@ function MultiPillGroup({
 
 function SavedSmartRouteCard({ route }: { route: PlannedRoute }) {
   return (
-    <article className="rounded-[8px] border border-[#d7e3dc] bg-white p-4 shadow-sm">
+    <article className="card-interactive rounded-[8px] border border-[#d7e3dc] bg-white p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-bold uppercase tracking-[0.14em] text-[#357179]">
@@ -3436,7 +3438,7 @@ function SavedSmartRouteCard({ route }: { route: PlannedRoute }) {
         <SoftPill>{route.stops.length} Stopps</SoftPill>
       </div>
       <a
-        className="mt-4 inline-flex rounded-[8px] bg-[#125f68] px-4 py-3 text-sm font-black text-white transition hover:bg-[#0e4d54]"
+        className="mt-4 inline-flex rounded-[8px] btn-sheen bg-[#125f68] px-4 py-3 text-sm font-black text-white transition hover:bg-[#0e4d54]"
         href={route.mapsLinks[0]}
         rel="noreferrer"
         target="_blank"
@@ -3608,7 +3610,7 @@ function MapView({
           <SectionTitle kicker="Karte" title="POIs, Restaurants & Tagesrouten" />
           {mapRoute && (
             <a
-              className="rounded-[8px] bg-[#125f68] px-4 py-3 text-sm font-black text-white transition hover:bg-[#0e4d54]"
+              className="rounded-[8px] btn-sheen bg-[#125f68] px-4 py-3 text-sm font-black text-white transition hover:bg-[#0e4d54]"
               href={mapRoute.mapsLinks[0]}
               rel="noreferrer"
               target="_blank"
@@ -3656,7 +3658,7 @@ function MapView({
               Als Ziel
             </button>
             <button
-              className="rounded-[8px] bg-[#125f68] px-4 py-3 text-sm font-black text-white transition hover:bg-[#0e4d54]"
+              className="rounded-[8px] btn-sheen bg-[#125f68] px-4 py-3 text-sm font-black text-white transition hover:bg-[#0e4d54]"
               onClick={() => addPointToMapRoute(selectedPoint)}
               type="button"
             >
@@ -4304,7 +4306,7 @@ function FixedCostCard({ cost }: { cost: FixedCost }) {
         : "ausgeglichen";
 
   return (
-    <article className="rounded-[8px] border border-[#d7e3dc] bg-white p-4 shadow-sm">
+    <article className="card-interactive rounded-[8px] border border-[#d7e3dc] bg-white p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-bold uppercase tracking-[0.14em] text-[#357179]">{cost.area}</p>
@@ -4394,7 +4396,7 @@ function FlightCard({ flight }: { flight: Flight }) {
   const statusLinks = flightStatusLinks(flight);
 
   return (
-    <article className="rounded-[8px] border border-[#d7e3dc] bg-white p-4 shadow-sm">
+    <article className="card-interactive rounded-[8px] border border-[#d7e3dc] bg-white p-4 shadow-sm">
       <VehicleImage alt={`${flight.airline} ${flight.aircraft}`} src={image} />
       <div className="flex items-start justify-between gap-3">
         <div>
@@ -4415,7 +4417,7 @@ function FlightCard({ flight }: { flight: Flight }) {
       </div>
       <div className="mt-4 flex flex-wrap gap-2">
         <a
-          className="rounded-[8px] bg-[#125f68] px-4 py-3 text-sm font-black text-white transition hover:bg-[#0e4d54]"
+          className="rounded-[8px] btn-sheen bg-[#125f68] px-4 py-3 text-sm font-black text-white transition hover:bg-[#0e4d54]"
           href={flight.manageUrl}
           rel="noreferrer"
           target="_blank"
@@ -4699,7 +4701,7 @@ function CopyOrderButton({ code }: { code: string }) {
 
 function RouteCard({ route }: { route: RoutePlan }) {
   return (
-    <article className="flex min-h-[260px] flex-col rounded-[8px] border border-[#d7e3dc] bg-white p-4 shadow-sm">
+    <article className="card-interactive flex min-h-[260px] flex-col rounded-[8px] border border-[#d7e3dc] bg-white p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-bold uppercase tracking-[0.14em] text-[#357179]">{route.day}</p>
@@ -4716,7 +4718,7 @@ function RouteCard({ route }: { route: RoutePlan }) {
       </div>
       <p className="mt-4 flex-1 text-sm font-semibold text-[#44635b]">{route.note}</p>
       <a
-        className="mt-4 inline-flex justify-center rounded-[8px] bg-[#125f68] px-4 py-3 text-sm font-black text-white transition hover:bg-[#0e4d54]"
+        className="mt-4 inline-flex justify-center rounded-[8px] btn-sheen bg-[#125f68] px-4 py-3 text-sm font-black text-white transition hover:bg-[#0e4d54]"
         href={route.maps}
         rel="noreferrer"
         target="_blank"
@@ -4734,7 +4736,7 @@ function PlaceCard({ place }: { place: Place }) {
   const description = readableText(place.note).replace(/Google\s+\d[,.]\d.*$/i, "").trim();
 
   return (
-    <article className="flex flex-col gap-2.5 rounded-[14px] border border-[#d7e3dc] bg-white p-4 shadow-sm">
+    <article className="card-interactive flex flex-col gap-2.5 rounded-[14px] border border-[#d7e3dc] bg-white p-4 shadow-sm">
       <div className="flex items-start gap-3">
         <span aria-hidden="true" className="grid h-11 w-11 shrink-0 place-items-center rounded-[12px] bg-[#eff6f2] text-[20px]">
           {tourismEmoji(`${place.category} ${place.title} ${place.effort}`)}
@@ -4785,7 +4787,7 @@ function RestaurantCard({ restaurant }: { restaurant: Restaurant }) {
   const cuisineShort = readableText(restaurant.cuisine).split(",")[0]?.trim() || "Restaurant";
 
   return (
-    <article className="flex flex-col gap-2.5 rounded-[14px] border border-[#d7e3dc] bg-white p-4 shadow-sm">
+    <article className="card-interactive flex flex-col gap-2.5 rounded-[14px] border border-[#d7e3dc] bg-white p-4 shadow-sm">
       <div className="flex items-start gap-3">
         <span aria-hidden="true" className="grid h-11 w-11 shrink-0 place-items-center rounded-[12px] bg-[#eff6f2] text-[20px]">
           {restaurantEmoji(`${restaurant.cuisine} ${restaurant.veggie}`)}
@@ -4860,7 +4862,7 @@ function SectionTitle({
     <div className="flex items-start justify-between gap-3">
       <div>
         <p className="text-sm font-bold uppercase tracking-[0.16em] text-[#357179]">{kicker}</p>
-        <h2 className="mt-1 text-2xl font-black text-[#0e302e]">{title}</h2>
+        <h2 className="mt-1 text-2xl font-black gradient-text">{title}</h2>
       </div>
       {action}
     </div>

@@ -410,3 +410,127 @@ img {
     bottom: auto;
   }
 }
+
+/* ============================================================
+   Extra polish: entrance, micro-interactions, accents (v9)
+   ============================================================ */
+
+@keyframes reveal-up {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* whole-view fade+slide on tab switch */
+.view-enter {
+  animation: reveal-up 0.44s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+/* single element reveal */
+.reveal-up {
+  animation: reveal-up 0.5s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+/* staggered children for small lists/grids */
+.stagger > * {
+  animation: reveal-up 0.5s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+.stagger > *:nth-child(1) { animation-delay: 0.03s; }
+.stagger > *:nth-child(2) { animation-delay: 0.08s; }
+.stagger > *:nth-child(3) { animation-delay: 0.13s; }
+.stagger > *:nth-child(4) { animation-delay: 0.18s; }
+.stagger > *:nth-child(5) { animation-delay: 0.23s; }
+.stagger > *:nth-child(6) { animation-delay: 0.28s; }
+.stagger > *:nth-child(7) { animation-delay: 0.33s; }
+.stagger > *:nth-child(8) { animation-delay: 0.38s; }
+
+/* card hover-lift + press feedback */
+.card-interactive {
+  transition:
+    transform 0.26s cubic-bezier(0.2, 0.8, 0.3, 1),
+    box-shadow 0.26s ease,
+    border-color 0.26s ease;
+  will-change: transform;
+}
+@media (hover: hover) {
+  .card-interactive:hover {
+    transform: translate3d(0, -4px, 0);
+    box-shadow: 0 24px 52px rgba(14, 48, 46, 0.16);
+    border-color: rgba(57, 169, 158, 0.55);
+  }
+}
+.card-interactive:active {
+  transform: translate3d(0, -1px, 0) scale(0.992);
+}
+
+/* animated gradient heading accent */
+.gradient-text {
+  background: linear-gradient(100deg, #0e767c 0%, #2fa99e 44%, #e7912f 100%);
+  background-size: 220% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: gradient-pan 7s ease-in-out infinite alternate;
+}
+@keyframes gradient-pan {
+  to {
+    background-position: 100% center;
+  }
+}
+
+/* moving sheen on primary buttons */
+.btn-sheen {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.btn-sheen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    115deg,
+    transparent 28%,
+    rgba(255, 255, 255, 0.38) 48%,
+    transparent 68%
+  );
+  transform: translateX(-130%);
+  transition: transform 0.65s ease;
+  pointer-events: none;
+  z-index: 1;
+}
+@media (hover: hover) {
+  .btn-sheen:hover::after {
+    transform: translateX(130%);
+  }
+}
+
+/* gentle floating accent (reuses hero-drift) */
+.float-slow {
+  animation: hero-drift 11s ease-in-out infinite alternate;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .view-enter,
+  .reveal-up,
+  .stagger > *,
+  .gradient-text,
+  .float-slow {
+    animation: none;
+  }
+  .stagger > * {
+    animation-delay: 0s !important;
+  }
+  .card-interactive {
+    transition: none;
+  }
+  .btn-sheen::after {
+    display: none;
+  }
+}
