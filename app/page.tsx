@@ -1271,29 +1271,48 @@ function daysUntilTrip() {
   return Math.ceil((start.getTime() - now.getTime()) / 86_400_000);
 }
 
+function isKeyboardField(element: Element | null) {
+  return (
+    element instanceof HTMLInputElement ||
+    element instanceof HTMLTextAreaElement ||
+    element instanceof HTMLSelectElement
+  );
+}
+
+function refreshRootViewport(scrollTop = window.scrollY) {
+  const root = document.documentElement;
+  const scrollingElement = document.scrollingElement;
+  if (!scrollingElement) return;
+
+  const previousScrollBehavior = root.style.scrollBehavior;
+  root.style.scrollBehavior = "auto";
+  scrollingElement.scrollTop = scrollTop;
+  void root.offsetHeight;
+
+  window.requestAnimationFrame(() => {
+    scrollingElement.scrollTop = scrollTop;
+    root.style.scrollBehavior = previousScrollBehavior;
+  });
+}
+
 function useBodyScrollLock(locked: boolean) {
   useEffect(() => {
     if (!locked) return;
+    const root = document.documentElement;
     const scrollY = window.scrollY;
-    const previousHtmlOverscroll = document.documentElement.style.overscrollBehavior;
-    const previousPosition = document.body.style.position;
-    const previousTop = document.body.style.top;
-    const previousWidth = document.body.style.width;
-    const previousOverflow = document.body.style.overflow;
+    const preventBackgroundScroll = (event: TouchEvent) => {
+      const target = event.target;
+      if (target instanceof Element && target.closest("[data-scroll-lock-scrollable]")) return;
+      event.preventDefault();
+    };
 
-    document.documentElement.style.overscrollBehavior = "none";
-    document.body.style.position = "fixed";
-    document.body.style.top = `-${scrollY}px`;
-    document.body.style.width = "100%";
-    document.body.style.overflow = "hidden";
+    root.classList.add("modal-scroll-locked");
+    document.addEventListener("touchmove", preventBackgroundScroll, { passive: false });
 
     return () => {
-      document.documentElement.style.overscrollBehavior = previousHtmlOverscroll;
-      document.body.style.position = previousPosition;
-      document.body.style.top = previousTop;
-      document.body.style.width = previousWidth;
-      document.body.style.overflow = previousOverflow;
-      window.scrollTo(0, scrollY);
+      root.classList.remove("modal-scroll-locked");
+      document.removeEventListener("touchmove", preventBackgroundScroll);
+      window.requestAnimationFrame(() => refreshRootViewport(scrollY));
     };
   }, [locked]);
 }
@@ -1370,39 +1389,84 @@ export default function Home() {
     return () => window.clearTimeout(timer);
   }, []);
 
-  // iOS: detect on-screen keyboard and flag <html> so fixed bottom UI can hide
+  // iOS Safari can keep stale visual-viewport geometry after the keyboard closes.
+  // Track the actual viewport gap and refresh the root scroller once it expands again.
   useEffect(() => {
     const root = document.documentElement;
     const vv = window.visualViewport;
-    const isField = (el: Element | null) =>
-      !!el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT");
-    const setKb = (open: boolean) => root.classList.toggle("kb-open", open);
+    let keyboardSession = false;
+    let animationFrame = 0;
+    const timers = new Set<number>();
+    const keyboardIsOpen = () => {
+      if (!vv) return isKeyboardField(document.activeElement);
+      return window.innerHeight - vv.height > 120;
+    };
+    const clearTimers = () => {
+      timers.forEach((timer) => window.clearTimeout(timer));
+      timers.clear();
+    };
+    const recoverViewport = () => {
+      clearTimers();
+      [0, 80, 240].forEach((delay) => {
+        const timer = window.setTimeout(() => {
+          timers.delete(timer);
+          if (!keyboardIsOpen()) refreshRootViewport();
+        }, delay);
+        timers.add(timer);
+      });
+    };
+    const syncViewport = () => {
+      window.cancelAnimationFrame(animationFrame);
+      animationFrame = window.requestAnimationFrame(() => {
+        const open = keyboardIsOpen();
+        root.classList.toggle("kb-open", open);
+        if (open) {
+          keyboardSession = true;
+        } else if (keyboardSession) {
+          keyboardSession = false;
+          recoverViewport();
+        }
+      });
+    };
 
     const onFocusIn = (event: FocusEvent) => {
-      if (isField(event.target as Element | null)) setKb(true);
+      if (!isKeyboardField(event.target as Element | null)) return;
+      keyboardSession = true;
+      root.classList.add("kb-open");
+      const timer = window.setTimeout(() => {
+        timers.delete(timer);
+        syncViewport();
+      }, 180);
+      timers.add(timer);
     };
     const onFocusOut = () => {
-      window.setTimeout(() => {
-        if (!isField(document.activeElement)) setKb(false);
+      const timer = window.setTimeout(() => {
+        timers.delete(timer);
+        syncViewport();
       }, 60);
+      timers.add(timer);
     };
-    const onViewport = () => {
-      if (!vv) return;
-      const keyboardLikely = window.innerHeight - vv.height > 120;
-      if (keyboardLikely) {
-        if (isField(document.activeElement)) setKb(true);
-      } else if (!isField(document.activeElement)) {
-        setKb(false);
-      }
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") syncViewport();
     };
 
     document.addEventListener("focusin", onFocusIn);
     document.addEventListener("focusout", onFocusOut);
-    vv?.addEventListener("resize", onViewport);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("pageshow", syncViewport);
+    window.addEventListener("resize", syncViewport);
+    vv?.addEventListener("resize", syncViewport);
+    vv?.addEventListener("scroll", syncViewport);
     return () => {
+      clearTimers();
+      window.cancelAnimationFrame(animationFrame);
       document.removeEventListener("focusin", onFocusIn);
       document.removeEventListener("focusout", onFocusOut);
-      vv?.removeEventListener("resize", onViewport);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("pageshow", syncViewport);
+      window.removeEventListener("resize", syncViewport);
+      vv?.removeEventListener("resize", syncViewport);
+      vv?.removeEventListener("scroll", syncViewport);
       root.classList.remove("kb-open");
     };
   }, []);
@@ -2696,6 +2760,7 @@ function DeleteExpenseDialog({
         aria-label="Ausgabe löschen bestätigen"
         aria-modal="true"
         className="ios-alert-panel quick-sheet max-h-[calc(100dvh-28px)] w-full max-w-md overflow-y-auto rounded-[28px] border border-white/64 bg-[#fbfdf9]/90 p-4 pb-[calc(16px+env(safe-area-inset-bottom))] shadow-[0_24px_70px_rgba(0,0,0,0.28)] sm:rounded-[30px]"
+        data-scroll-lock-scrollable
         onClick={(event) => event.stopPropagation()}
         role="dialog"
       >
@@ -2817,6 +2882,7 @@ function QuickExpenseSheet({
         aria-modal="true"
         className="quick-sheet quick-sheet-panel max-h-[min(92dvh,calc(100dvh-24px))] w-full max-w-xl overflow-y-auto rounded-t-[30px] border border-white/64 bg-[#fbfdf9]/92 p-4 pb-[calc(18px+env(safe-area-inset-bottom))] shadow-[0_-18px_70px_rgba(0,0,0,0.28)] sm:max-h-[86vh] sm:rounded-[30px]"
         data-dragging={dragging}
+        data-scroll-lock-scrollable
         onClick={(event) => event.stopPropagation()}
         ref={panelRef}
         role="dialog"
