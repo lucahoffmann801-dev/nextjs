@@ -1370,6 +1370,43 @@ export default function Home() {
     return () => window.clearTimeout(timer);
   }, []);
 
+  // iOS: detect on-screen keyboard and flag <html> so fixed bottom UI can hide
+  useEffect(() => {
+    const root = document.documentElement;
+    const vv = window.visualViewport;
+    const isField = (el: Element | null) =>
+      !!el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT");
+    const setKb = (open: boolean) => root.classList.toggle("kb-open", open);
+
+    const onFocusIn = (event: FocusEvent) => {
+      if (isField(event.target as Element | null)) setKb(true);
+    };
+    const onFocusOut = () => {
+      window.setTimeout(() => {
+        if (!isField(document.activeElement)) setKb(false);
+      }, 60);
+    };
+    const onViewport = () => {
+      if (!vv) return;
+      const keyboardLikely = window.innerHeight - vv.height > 120;
+      if (keyboardLikely) {
+        if (isField(document.activeElement)) setKb(true);
+      } else if (!isField(document.activeElement)) {
+        setKb(false);
+      }
+    };
+
+    document.addEventListener("focusin", onFocusIn);
+    document.addEventListener("focusout", onFocusOut);
+    vv?.addEventListener("resize", onViewport);
+    return () => {
+      document.removeEventListener("focusin", onFocusIn);
+      document.removeEventListener("focusout", onFocusOut);
+      vv?.removeEventListener("resize", onViewport);
+      root.classList.remove("kb-open");
+    };
+  }, []);
+
   async function loadHotelWeather(refresh = false) {
     setWeatherLoading(true);
     setWeatherError("");

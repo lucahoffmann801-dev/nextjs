@@ -534,3 +534,25 @@ img {
     display: none;
   }
 }
+
+/* ============================================================
+   iOS keyboard handling: hide fixed bottom UI while typing
+   so it doesn't jump with the shrinking visual viewport (v9.1)
+   ============================================================ */
+
+.mobile-glass-nav {
+  transition: transform 0.22s ease, opacity 0.22s ease;
+}
+
+html.kb-open .mobile-glass-nav {
+  transform: translate3d(0, 130%, 0) !important;
+  opacity: 0;
+  pointer-events: none;
+}
+
+html.kb-open .quick-fab {
+  transform: translate3d(0, 130%, 0);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.22s ease, opacity 0.22s ease;
+}
