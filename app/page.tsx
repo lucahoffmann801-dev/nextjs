@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -145,7 +145,7 @@ async function requestWeather(points: WeatherPointRequest[], date?: string, refr
 }
 
 function timeFromIso(value: string | null | undefined) {
-  if (!value) return "–";
+  if (!value) return "â€“";
   return value.match(/T(\d{2}:\d{2})/)?.[1] ?? value;
 }
 
@@ -171,16 +171,16 @@ function nextTravelMoment(flights: Flight[], trains: TrainLeg[]): TravelMoment |
       id: flight.id,
       kind: "flight" as const,
       label: flight.direction,
-      title: `${flight.number} · ${flight.from} → ${flight.to}`,
-      detail: `${flight.date} · ${flight.dep}`,
+      title: `${flight.number} Â· ${flight.from} â†’ ${flight.to}`,
+      detail: `${flight.date} Â· ${flight.dep}`,
       at: new Date(`${germanDateToIso(flight.date)}T${flight.dep}:00+02:00`),
     })),
     ...trains.map((train) => ({
       id: train.id,
       kind: "train" as const,
       label: train.direction,
-      title: `${train.train} · ${train.from} → ${train.to}`,
-      detail: `${train.date} · ${train.dep} · Gleis ${train.depPlatform}`,
+      title: `${train.train} Â· ${train.from} â†’ ${train.to}`,
+      detail: `${train.date} Â· ${train.dep} Â· Gleis ${train.depPlatform}`,
       at: new Date(`${germanDateToIso(train.date)}T${train.dep}:00+02:00`),
     })),
   ].filter((moment) => !Number.isNaN(moment.at.getTime()));
@@ -193,7 +193,7 @@ function classNames(...classes: Array<string | false | null | undefined>) {
 }
 
 function parseAmountFlexible(raw: string): number | null {
-  let text = raw.replace(/[€\s]/g, "");
+  let text = raw.replace(/[â‚¬\s]/g, "");
   if (!text) return null;
   const lastComma = text.lastIndexOf(",");
   const lastDot = text.lastIndexOf(".");
@@ -217,20 +217,20 @@ function todayTravelDayLabel(): string | null {
 
 function categoryEmoji(category: string) {
   const text = category.toLowerCase();
-  if (text.includes("ausgleich")) return "💸";
-  if (text.includes("tank")) return "⛽";
-  if (text.includes("park") || text.includes("maut")) return "🅿️";
-  if (text.includes("supermarkt")) return "🛒";
-  if (text.includes("restaurant") || text.includes("café") || text.includes("essen")) return "🍽️";
-  if (text.includes("strand")) return "🏖️";
-  if (text.includes("ausflüge") || text.includes("eintritt")) return "🎟️";
-  if (text.includes("einkäufe")) return "🛍️";
-  if (text.includes("apotheke") || text.includes("notfall")) return "💊";
-  if (text.includes("öpnv") || text.includes("taxi")) return "🚕";
-  if (text.includes("fähre")) return "⛴️";
-  if (text.includes("hotel")) return "🏨";
-  if (text.includes("mietwagen")) return "🚗";
-  return "📦";
+  if (text.includes("ausgleich")) return "ðŸ’¸";
+  if (text.includes("tank")) return "â›½";
+  if (text.includes("park") || text.includes("maut")) return "ðŸ…¿ï¸";
+  if (text.includes("supermarkt")) return "ðŸ›’";
+  if (text.includes("restaurant") || text.includes("cafÃ©") || text.includes("essen")) return "ðŸ½ï¸";
+  if (text.includes("strand")) return "ðŸ–ï¸";
+  if (text.includes("ausflÃ¼ge") || text.includes("eintritt")) return "ðŸŽŸï¸";
+  if (text.includes("einkÃ¤ufe")) return "ðŸ›ï¸";
+  if (text.includes("apotheke") || text.includes("notfall")) return "ðŸ’Š";
+  if (text.includes("Ã¶pnv") || text.includes("taxi")) return "ðŸš•";
+  if (text.includes("fÃ¤hre")) return "â›´ï¸";
+  if (text.includes("hotel")) return "ðŸ¨";
+  if (text.includes("mietwagen")) return "ðŸš—";
+  return "ðŸ“¦";
 }
 
 const ratingFilters = [
@@ -248,13 +248,13 @@ const priorityFilters = [
 ];
 
 const restaurantCuisineFilters = [
-  { value: "all", label: "Alle Küchen", terms: [] },
+  { value: "all", label: "Alle KÃ¼chen", terms: [] },
   { value: "greek", label: "Griechisch", terms: ["greek", "cretan", "taverna", "griechisch", "kretisch"] },
-  { value: "seafood", label: "Fisch/Meeresfrüchte", terms: ["seafood", "fish", "angler", "fisch", "meeresfrüchte", "meeresfr"] },
+  { value: "seafood", label: "Fisch/MeeresfrÃ¼chte", terms: ["seafood", "fish", "angler", "fisch", "meeresfrÃ¼chte", "meeresfr"] },
   { value: "italian", label: "Italienisch", terms: ["italian", "pizza", "pasta"] },
   { value: "asian", label: "Asiatisch/Sushi", terms: ["asian", "sushi", "japanese", "chinese", "thai", "asiatisch"] },
   { value: "mexican", label: "Mexikanisch", terms: ["mexican", "taco"] },
-  { value: "cafe", label: "Café/Brunch", terms: ["cafe", "café", "coffee", "kaffee", "breakfast", "frühstück", "brunch"] },
+  { value: "cafe", label: "CafÃ©/Brunch", terms: ["cafe", "cafÃ©", "coffee", "kaffee", "breakfast", "frÃ¼hstÃ¼ck", "brunch"] },
 ];
 
 const veggieFilters = [
@@ -265,9 +265,9 @@ const veggieFilters = [
 
 const sightTypeFilters = [
   { value: "all", label: "Alle Typen", terms: [] },
-  { value: "beach", label: "Strand", terms: ["beach", "strand", "wasserfall", "höhle", "insel"] },
+  { value: "beach", label: "Strand", terms: ["beach", "strand", "wasserfall", "hÃ¶hle", "insel"] },
   { value: "museum", label: "Museum", terms: ["museum", "museen", "galerie"] },
-  { value: "history", label: "Historisch", terms: ["historical", "archaeological", "fortress", "castle", "lighthouse", "historisch", "archäologisch", "festung", "burg", "leuchtturm"] },
+  { value: "history", label: "Historisch", terms: ["historical", "archaeological", "fortress", "castle", "lighthouse", "historisch", "archÃ¤ologisch", "festung", "burg", "leuchtturm"] },
   { value: "nature", label: "Natur/Wandern", terms: ["hiking", "nature", "park", "gorge", "trail", "wandern", "wandergebiet", "natur", "naturschutz"] },
   { value: "activity", label: "Aktiv/Tour", terms: ["tour", "outdoor", "boat", "safari", "bike", "escape", "amusement", "aktiv", "reiseveranstalter", "touristeninformation"] },
   { value: "viewpoint", label: "Aussicht", terms: ["viewpoint", "observation", "scenic", "aussicht", "aussichtsplattform"] },
@@ -293,11 +293,11 @@ const routeDurationOptions: Array<{ value: RouteDurationId; label: string; minut
 ];
 
 const routeInterestOptions: Array<{ value: RouteInterestId; label: string; terms: string[] }> = [
-  { value: "highlights", label: "Highlights", terms: ["top", "hoch", "highlight", "sehenswürdigkeit", "google 4,8", "google 4,9"] },
-  { value: "beach", label: "Strände", terms: ["strand", "beach", "küste", "wasser", "insel"] },
-  { value: "nature", label: "Natur/Wandern", terms: ["natur", "wandern", "schlucht", "gorge", "trail", "park", "höhle"] },
+  { value: "highlights", label: "Highlights", terms: ["top", "hoch", "highlight", "sehenswÃ¼rdigkeit", "google 4,8", "google 4,9"] },
+  { value: "beach", label: "StrÃ¤nde", terms: ["strand", "beach", "kÃ¼ste", "wasser", "insel"] },
+  { value: "nature", label: "Natur/Wandern", terms: ["natur", "wandern", "schlucht", "gorge", "trail", "park", "hÃ¶hle"] },
   { value: "culture", label: "Kultur", terms: ["museum", "galerie", "kultur", "kirche", "kloster", "kunst"] },
-  { value: "history", label: "Historisch", terms: ["historisch", "archäologisch", "festung", "burg", "ruine", "denkmal"] },
+  { value: "history", label: "Historisch", terms: ["historisch", "archÃ¤ologisch", "festung", "burg", "ruine", "denkmal"] },
   { value: "photo", label: "Fotospots", terms: ["aussicht", "viewpoint", "scenic", "leuchtturm", "panorama", "fot"] },
   { value: "relaxed", label: "Entspannt", terms: ["strand", "aussicht", "park", "garten", "promenade", "hafen"] },
 ];
@@ -305,7 +305,7 @@ const routeInterestOptions: Array<{ value: RouteInterestId; label: string; terms
 const mealPlanOptions: Array<{ value: MealPlanId; label: string; meals: number; restaurantMinutes: number; preferredSlots: number[] }> = [
   { value: "none", label: "Keine", meals: 0, restaurantMinutes: 0, preferredSlots: [] },
   { value: "coffee", label: "Kaffee-Stopp", meals: 1, restaurantMinutes: 30, preferredSlots: [10 * 60 + 45] },
-  { value: "snack", label: "Snack/Café", meals: 1, restaurantMinutes: 40, preferredSlots: [11 * 60 + 30] },
+  { value: "snack", label: "Snack/CafÃ©", meals: 1, restaurantMinutes: 40, preferredSlots: [11 * 60 + 30] },
   { value: "lunch", label: "Mittagessen", meals: 1, restaurantMinutes: 75, preferredSlots: [13 * 60] },
   { value: "dinner", label: "Abendessen", meals: 1, restaurantMinutes: 85, preferredSlots: [19 * 60] },
   { value: "lunchDinner", label: "Mittag + Abend", meals: 2, restaurantMinutes: 75, preferredSlots: [13 * 60, 19 * 60] },
@@ -332,20 +332,20 @@ const expenseSplitOptions: Array<{ value: SplitPreset; label: string; luca: numb
 ];
 
 const costCategoryVisuals = [
-  { terms: ["flug"], icon: "✈️", color: "#7dd3fc" },
-  { terms: ["hotel", "unterkunft"], icon: "🏨", color: "#c4b5fd" },
-  { terms: ["mietwagen", "auto"], icon: "🚙", color: "#fdba74" },
-  { terms: ["bahn", "zug"], icon: "🚆", color: "#86efac" },
-  { terms: ["tanken", "benzin", "diesel"], icon: "⛽", color: "#fde047" },
-  { terms: ["restaurant", "cafe", "essen"], icon: "🍽️", color: "#fca5a5" },
-  { terms: ["supermarkt", "lebensmittel"], icon: "🛒", color: "#67e8f9" },
-  { terms: ["parken", "maut"], icon: "🅿️", color: "#94a3b8" },
-  { terms: ["strand", "liegen", "schirme"], icon: "🏖️", color: "#5eead4" },
-  { terms: ["ausflug", "eintritt"], icon: "🎟️", color: "#f0abfc" },
-  { terms: ["einkauf", "shopping"], icon: "🛍️", color: "#f9a8d4" },
-  { terms: ["apotheke", "notfall"], icon: "💊", color: "#f87171" },
-  { terms: ["taxi", "opnv", "bus"], icon: "🚕", color: "#a7f3d0" },
-  { terms: ["sonstig"], icon: "📦", color: "#d6d3d1" },
+  { terms: ["flug"], icon: "âœˆï¸", color: "#7dd3fc" },
+  { terms: ["hotel", "unterkunft"], icon: "ðŸ¨", color: "#c4b5fd" },
+  { terms: ["mietwagen", "auto"], icon: "ðŸš™", color: "#fdba74" },
+  { terms: ["bahn", "zug"], icon: "ðŸš†", color: "#86efac" },
+  { terms: ["tanken", "benzin", "diesel"], icon: "â›½", color: "#fde047" },
+  { terms: ["restaurant", "cafe", "essen"], icon: "ðŸ½ï¸", color: "#fca5a5" },
+  { terms: ["supermarkt", "lebensmittel"], icon: "ðŸ›’", color: "#67e8f9" },
+  { terms: ["parken", "maut"], icon: "ðŸ…¿ï¸", color: "#94a3b8" },
+  { terms: ["strand", "liegen", "schirme"], icon: "ðŸ–ï¸", color: "#5eead4" },
+  { terms: ["ausflug", "eintritt"], icon: "ðŸŽŸï¸", color: "#f0abfc" },
+  { terms: ["einkauf", "shopping"], icon: "ðŸ›ï¸", color: "#f9a8d4" },
+  { terms: ["apotheke", "notfall"], icon: "ðŸ’Š", color: "#f87171" },
+  { terms: ["taxi", "opnv", "bus"], icon: "ðŸš•", color: "#a7f3d0" },
+  { terms: ["sonstig"], icon: "ðŸ“¦", color: "#d6d3d1" },
 ];
 
 function costCategoryVisual(category: string) {
@@ -354,7 +354,7 @@ function costCategoryVisual(category: string) {
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "");
   return costCategoryVisuals.find((item) => item.terms.some((term) => normalized.includes(term))) ?? {
-    icon: "💶",
+    icon: "ðŸ’¶",
     color: "#e5e7eb",
   };
 }
@@ -384,7 +384,7 @@ function buildCostBreakdown(fixedCosts: FixedCost[], expenses: ExpenseItem[]) {
     addEntry("fixed", cost.area, cost.amount, {
       label: cost.kind,
       amount: cost.amount,
-      meta: [cost.date, `${cost.paidBy} bezahlt`].filter(Boolean).join(" · "),
+      meta: [cost.date, `${cost.paidBy} bezahlt`].filter(Boolean).join(" Â· "),
     });
   }
 
@@ -393,7 +393,7 @@ function buildCostBreakdown(fixedCosts: FixedCost[], expenses: ExpenseItem[]) {
     addEntry("trip", expense.category, expense.amount, {
       label: expense.note.trim() || expense.category,
       amount: expense.amount,
-      meta: [expense.travelDay, `${expense.paidBy} bezahlt`].filter(Boolean).join(" · "),
+      meta: [expense.travelDay, `${expense.paidBy} bezahlt`].filter(Boolean).join(" Â· "),
     });
   }
 
@@ -407,8 +407,8 @@ const hotelPoint: RoutePoint = {
   kind: "hotel",
   title: trip.hotel,
   category: "Unterkunft",
-  region: "Südküste",
-  note: "Basis in Frangokastello für Start, Ziel und Tagesrouten.",
+  region: "SÃ¼dkÃ¼ste",
+  note: "Basis in Frangokastello fÃ¼r Start, Ziel und Tagesrouten.",
   maps: trip.hotelMaps,
   lat: 35.1829,
   lng: 24.2326,
@@ -457,25 +457,25 @@ const guideTranslations = [
   ["Internet marketing service", "Internet-Marketing"],
   ["Motorcycle rental agency", "Motorradverleih"],
   ["Tourist information center", "Touristeninformation"],
-  ["Outdoor activity organiser", "Outdoor-Aktivitäten"],
+  ["Outdoor activity organiser", "Outdoor-AktivitÃ¤ten"],
   ["Museum of musical instruments", "Musikinstrumenten-Museum"],
   ["Traditional market", "Traditioneller Markt"],
   ["Sightseeing tour agency", "Sightseeing-Touren"],
   ["Airport shuttle service", "Flughafentransfer"],
   ["Holiday apartment rental", "Ferienwohnungsvermietung"],
-  ["Middle Eastern restaurant", "Nahöstliches Restaurant"],
-  ["Country food restaurant", "Landküche-Restaurant"],
+  ["Middle Eastern restaurant", "NahÃ¶stliches Restaurant"],
+  ["Country food restaurant", "LandkÃ¼che-Restaurant"],
   ["Fine dining restaurant", "Gehobenes Restaurant"],
   ["Greek Orthodox church", "Griechisch-orthodoxe Kirche"],
-  ["Archaeological museum", "Archäologisches Museum"],
-  ["Archaeological site", "Archäologische Stätte"],
+  ["Archaeological museum", "ArchÃ¤ologisches Museum"],
+  ["Archaeological site", "ArchÃ¤ologische StÃ¤tte"],
   ["Natural history museum", "Naturkundemuseum"],
   ["Physical fitness program", "Fitnessprogramm"],
-  ["Tourist attraction", "Sehenswürdigkeit"],
+  ["Tourist attraction", "SehenswÃ¼rdigkeit"],
   ["Historical landmark", "Historischer Ort"],
   ["Historical place", "Historischer Ort"],
   ["Cultural landmark", "Kulturdenkmal"],
-  ["Heritage building", "Historisches Gebäude"],
+  ["Heritage building", "Historisches GebÃ¤ude"],
   ["Heritage museum", "Heimatmuseum"],
   ["Local history museum", "Lokalgeschichtliches Museum"],
   ["Handicraft museum", "Handwerksmuseum"],
@@ -491,12 +491,12 @@ const guideTranslations = [
   ["Hiking guide", "Wander-Guide"],
   ["Nature preserve", "Naturschutzgebiet"],
   ["National reserve", "Nationalreservat"],
-  ["Ecological park", "Ökopark"],
+  ["Ecological park", "Ã–kopark"],
   ["Wildlife park", "Wildpark"],
   ["Botanical garden", "Botanischer Garten"],
   ["Community garden", "Gemeinschaftsgarten"],
   ["City park", "Stadtpark"],
-  ["Public beach", "Öffentlicher Strand"],
+  ["Public beach", "Ã–ffentlicher Strand"],
   ["Beach pavillion", "Strandpavillon"],
   ["Boat tour agency", "Bootstouren"],
   ["Boat rental service", "Bootsverleih"],
@@ -523,7 +523,7 @@ const guideTranslations = [
   ["Theme park", "Freizeitpark"],
   ["Produce market", "Lebensmittelmarkt"],
   ["City courthouse", "Gericht"],
-  ["Corporate office", "Büro"],
+  ["Corporate office", "BÃ¼ro"],
   ["Running store", "Laufladen"],
   ["Health consultant", "Gesundheitsberatung"],
   ["Sports club", "Sportverein"],
@@ -531,7 +531,7 @@ const guideTranslations = [
   ["Tour agency", "Touranbieter"],
   ["Travel agency", "Reiseagentur"],
   ["Air taxi", "Lufttaxi"],
-  ["Army museum", "Militärmuseum"],
+  ["Army museum", "MilitÃ¤rmuseum"],
   ["Manufacturer", "Hersteller"],
   ["Aquarium", "Aquarium"],
   ["Basilica", "Basilika"],
@@ -543,7 +543,7 @@ const guideTranslations = [
   ["Fountain", "Brunnen"],
   ["Garden", "Garten"],
   ["Market", "Markt"],
-  ["Memorial", "Gedenkstätte"],
+  ["Memorial", "GedenkstÃ¤tte"],
   ["Monastery", "Kloster"],
   ["Monument", "Denkmal"],
   ["Museum", "Museum"],
@@ -555,18 +555,18 @@ const guideTranslations = [
   ["Mediterranean restaurant", "Mediterranes Restaurant"],
   ["Angler fish restaurant", "Fischrestaurant"],
   ["Fish & chips restaurant", "Fish-and-Chips-Restaurant"],
-  ["Country food restaurant", "Landküche-Restaurant"],
+  ["Country food restaurant", "LandkÃ¼che-Restaurant"],
   ["Meat dish restaurant", "Fleischgerichte-Restaurant"],
   ["Barbecue restaurant", "Grillrestaurant"],
-  ["Breakfast restaurant", "Frühstücksrestaurant"],
+  ["Breakfast restaurant", "FrÃ¼hstÃ¼cksrestaurant"],
   ["Delivery Restaurant", "Lieferservice"],
-  ["Eclectic restaurant", "Vielfältiges Restaurant"],
+  ["Eclectic restaurant", "VielfÃ¤ltiges Restaurant"],
   ["Fast food restaurant", "Fast-Food-Restaurant"],
   ["Family restaurant", "Familienrestaurant"],
   ["Falafel restaurant", "Falafel-Restaurant"],
   ["Italian restaurant", "Italienisches Restaurant"],
   ["Greek restaurant", "Griechisches Restaurant"],
-  ["Seafood restaurant", "Meeresfrüchte-Restaurant"],
+  ["Seafood restaurant", "MeeresfrÃ¼chte-Restaurant"],
   ["Sushi restaurant", "Sushi-Restaurant"],
   ["Asian restaurant", "Asiatisches Restaurant"],
   ["English restaurant", "Englisches Restaurant"],
@@ -576,18 +576,18 @@ const guideTranslations = [
   ["Brunch restaurant", "Brunch-Restaurant"],
   ["Fish restaurant", "Fischrestaurant"],
   ["Dessert restaurant", "Dessertrestaurant"],
-  ["Middle Eastern restaurant", "Nahöstliches Restaurant"],
-  ["Guest house", "Gästehaus"],
+  ["Middle Eastern restaurant", "NahÃ¶stliches Restaurant"],
+  ["Guest house", "GÃ¤stehaus"],
   ["Resort hotel", "Resorthotel"],
   ["Capsule hotel", "Kapselhotel"],
   ["Townhouse complex", "Reihenhausanlage"],
   ["Holiday apartment rental", "Ferienwohnungsvermietung"],
-  ["Coffee shop", "Café"],
+  ["Coffee shop", "CafÃ©"],
   ["Coffee stand", "Kaffeestand"],
   ["Juice shop", "Saftbar"],
   ["Noodle shop", "Nudelshop"],
   ["Bagel shop", "Bagelshop"],
-  ["Soup kitchen", "Suppenküche"],
+  ["Soup kitchen", "SuppenkÃ¼che"],
   ["Wine cellar", "Weinkeller"],
   ["Wine bar", "Weinbar"],
   ["Beer garden", "Biergarten"],
@@ -602,14 +602,14 @@ const guideTranslations = [
   ["Diner", "Diner"],
   ["Grill", "Grill"],
   ["Hotel", "Hotel"],
-  ["Cafe", "Café"],
+  ["Cafe", "CafÃ©"],
   ["Bar", "Bar"],
   ["Restaurant", "Restaurant"],
   ["Vegan & veggie", "Vegan & vegetarisch"],
   ["Vegan options", "Vegane Optionen"],
   ["Vegetarian options", "Vegetarische Optionen"],
-  ["Accepts reservations", "Reservierungen möglich"],
-  ["Outdoor seating", "Außenplätze"],
+  ["Accepts reservations", "Reservierungen mÃ¶glich"],
+  ["Outdoor seating", "AuÃŸenplÃ¤tze"],
   ["Dine-in", "Essen vor Ort"],
   ["Takeout", "Zum Mitnehmen"],
   ["Reviews", "Bewertungen"],
@@ -617,7 +617,7 @@ const guideTranslations = [
 ].sort((a, b) => b[0].length - a[0].length);
 
 function repairMojibake(value: string) {
-  if (!/[ÃÂÎÏâ]/.test(value)) {
+  if (!/[ÃƒÃ‚ÃŽÃÃ¢]/.test(value)) {
     return value;
   }
 
@@ -634,7 +634,7 @@ function repairMojibake(value: string) {
       throw new Error("Cannot repair");
     });
     const repaired = new TextDecoder("utf-8", { fatal: false }).decode(new Uint8Array(bytes));
-    return repaired.includes("�") ? value : repaired;
+    return repaired.includes("ï¿½") ? value : repaired;
   } catch {
     return value;
   }
@@ -643,18 +643,18 @@ function repairMojibake(value: string) {
 function repairGuideText(value?: string | null) {
   const repaired = repairMojibake(value ?? "");
   if (/^\?+$/.test(repaired.trim())) {
-    return "€".repeat(repaired.trim().length);
+    return "â‚¬".repeat(repaired.trim().length);
   }
   return repaired
-    .replaceAll("S?dk?ste", "Südküste")
-    .replaceAll("s?dk?ste", "südküste")
-    .replaceAll("m?glich", "möglich")
-    .replaceAll("M?glich", "Möglich")
+    .replaceAll("S?dk?ste", "SÃ¼dkÃ¼ste")
+    .replaceAll("s?dk?ste", "sÃ¼dkÃ¼ste")
+    .replaceAll("m?glich", "mÃ¶glich")
+    .replaceAll("M?glich", "MÃ¶glich")
     .replaceAll("Pr?fen", "Unklar")
     .replaceAll("pr?fen", "unklar")
-    .replaceAll("Prüfen", "Unklar")
-    .replaceAll("prüfen", "unklar")
-    .replaceAll(" ? ", " · ");
+    .replaceAll("PrÃ¼fen", "Unklar")
+    .replaceAll("prÃ¼fen", "unklar")
+    .replaceAll(" ? ", " Â· ");
 }
 
 function translateGuideText(value: string) {
@@ -802,7 +802,7 @@ function isTourismPlace(place: Place) {
     "sushi",
     "pizza",
     "fast-food",
-    "bäckerei",
+    "bÃ¤ckerei",
     "backerei",
     "bakery",
     "philo",
@@ -852,7 +852,7 @@ function isTourismPlace(place: Place) {
     "basilica",
     "moschee",
     "mosque",
-    "ναός",
+    "Î½Î±ÏŒÏ‚",
   ];
   const isAccommodation = accommodationTerms.some((term) => plain.includes(term));
   const isFood = foodTerms.some((term) => plain.includes(term));
@@ -873,7 +873,7 @@ function isCreteRestaurant(restaurant: Restaurant) {
   const blockedTerms = [
     "hopferei",
     "merkurstrasse",
-    "merkurstraße",
+    "merkurstraÃŸe",
     "ramstein",
     "miesenbach",
     "kohlwaldchen",
@@ -965,22 +965,22 @@ function walkingMinutesForPoint(point: RoutePoint, walkingLevel: WalkingLevelId)
 
 function tourismEmoji(value: string) {
   const text = stripDiacritics(normalizedText(value));
-  if (text.includes("strand") || text.includes("beach")) return "🏖️";
-  if (text.includes("museum") || text.includes("galerie")) return "🏛️";
-  if (text.includes("schlucht") || text.includes("wandern") || text.includes("natur")) return "🥾";
-  if (text.includes("aussicht") || text.includes("viewpoint")) return "📸";
-  if (text.includes("burg") || text.includes("festung") || text.includes("historisch")) return "🏰";
-  return "📍";
+  if (text.includes("strand") || text.includes("beach")) return "ðŸ–ï¸";
+  if (text.includes("museum") || text.includes("galerie")) return "ðŸ›ï¸";
+  if (text.includes("schlucht") || text.includes("wandern") || text.includes("natur")) return "ðŸ¥¾";
+  if (text.includes("aussicht") || text.includes("viewpoint")) return "ðŸ“¸";
+  if (text.includes("burg") || text.includes("festung") || text.includes("historisch")) return "ðŸ°";
+  return "ðŸ“";
 }
 
 function restaurantEmoji(value: string) {
   const text = stripDiacritics(normalizedText(value));
-  if (text.includes("cafe") || text.includes("kaffee") || text.includes("brunch")) return "☕";
-  if (text.includes("sushi") || text.includes("asian")) return "🍣";
-  if (text.includes("pizza") || text.includes("italien")) return "🍕";
-  if (text.includes("fish") || text.includes("fisch") || text.includes("seafood")) return "🐟";
-  if (text.includes("vegan") || text.includes("vegetar")) return "🥗";
-  return "🍽️";
+  if (text.includes("cafe") || text.includes("kaffee") || text.includes("brunch")) return "â˜•";
+  if (text.includes("sushi") || text.includes("asian")) return "ðŸ£";
+  if (text.includes("pizza") || text.includes("italien")) return "ðŸ•";
+  if (text.includes("fish") || text.includes("fisch") || text.includes("seafood")) return "ðŸŸ";
+  if (text.includes("vegan") || text.includes("vegetar")) return "ðŸ¥—";
+  return "ðŸ½ï¸";
 }
 
 function placeToRoutePoint(place: Place): RoutePoint | null {
@@ -1017,7 +1017,7 @@ function restaurantToRoutePoint(restaurant: Restaurant): RoutePoint | null {
     priority: readableText(restaurant.priority),
     rating: googleRating(restaurant.ratingHint),
     stayMinutes: 75,
-    reason: "Essensstopp in Routennähe mit passenden Google-Maps-Daten.",
+    reason: "Essensstopp in RoutennÃ¤he mit passenden Google-Maps-Daten.",
   };
 }
 
@@ -1252,7 +1252,7 @@ function routeReason(point: RoutePoint, interests: RouteInterestId[]) {
     .map((interest) => routeInterestOptions.find((option) => option.value === interest)?.label)
     .filter(Boolean)
     .join(", ");
-  if (labels) return `Treffer für ${labels}; ${point.rating ? `Google ${point.rating.toLocaleString("de-DE")}` : point.priority}.`;
+  if (labels) return `Treffer fÃ¼r ${labels}; ${point.rating ? `Google ${point.rating.toLocaleString("de-DE")}` : point.priority}.`;
   return point.rating ? `Starker Google-Treffer mit ${point.rating.toLocaleString("de-DE")}.` : `Guter ${point.priority}-Stopp.`;
 }
 
@@ -1475,13 +1475,13 @@ export default function Home() {
       const settlement = input.splitMode?.toLowerCase() === "ausgleichszahlung";
       showToast(
         settlement ? "Ausgleich eingetragen" : "Gespeichert",
-        `${money(input.amount)} · ${input.category} · ${input.paidBy} bezahlt`,
+        `${money(input.amount)} Â· ${input.category} Â· ${input.paidBy} bezahlt`,
         settlement ? "celebrate" : "success",
       );
       return true;
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Ausgabe konnte nicht gespeichert werden.");
-      showToast("Speichern hat nicht geklappt", "Bitte kurz prüfen und nochmal versuchen.", "error");
+      showToast("Speichern hat nicht geklappt", "Bitte kurz prÃ¼fen und nochmal versuchen.", "error");
       return false;
     } finally {
       setSaving(false);
@@ -1507,7 +1507,7 @@ export default function Home() {
         ...current,
         packItems: current.packItems.map((item) => (item.id === id ? { ...item, [field]: !value } : item)),
       }));
-      showToast("Packliste nicht gespeichert", "Die Änderung wurde zurückgenommen.", "error");
+      showToast("Packliste nicht gespeichert", "Die Ã„nderung wurde zurÃ¼ckgenommen.", "error");
     }
   }
 
@@ -1517,12 +1517,12 @@ export default function Home() {
     try {
       const response = await fetch(`/api/expenses/${id}`, { method: "DELETE" });
       const state = await response.json();
-      if (!response.ok) throw new Error(state.error ?? "Ausgabe konnte nicht gelöscht werden.");
+      if (!response.ok) throw new Error(state.error ?? "Ausgabe konnte nicht gelÃ¶scht werden.");
       setAppState(state as TripState);
-      showToast("Ausgabe gelöscht", "Die Kosten wurden neu berechnet.");
+      showToast("Ausgabe gelÃ¶scht", "Die Kosten wurden neu berechnet.");
     } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : "Ausgabe konnte nicht gelöscht werden.");
-      showToast("Löschen fehlgeschlagen", "Die Ausgabe ist noch vorhanden.", "error");
+      setError(deleteError instanceof Error ? deleteError.message : "Ausgabe konnte nicht gelÃ¶scht werden.");
+      showToast("LÃ¶schen fehlgeschlagen", "Die Ausgabe ist noch vorhanden.", "error");
     } finally {
       setSaving(false);
     }
@@ -1542,18 +1542,18 @@ export default function Home() {
           title: route.title,
           stops: route.stops.map((stop) => stop.title),
           maps: route.mapsLinks[0] ?? "#",
-          cost: `${formatKm(route.totalKm)} · ${formatDuration(route.totalMinutes)}`,
+          cost: `${formatKm(route.totalKm)} Â· ${formatDuration(route.totalMinutes)}`,
           status: "Smart",
-          note: `${route.stress} · ${formatDuration(route.driveMinutes)} Fahrt · ${route.stops.length} Stopps`,
+          note: `${route.stress} Â· ${formatDuration(route.driveMinutes)} Fahrt Â· ${route.stops.length} Stopps`,
         }),
       });
       const state = await response.json();
       if (!response.ok) throw new Error(state.error ?? "Route konnte nicht gespeichert werden.");
       setAppState(state as TripState);
-      showToast("Route gespeichert", `${route.stops.length} Stopps · ${formatKm(route.totalKm)}`, "celebrate");
+      showToast("Route gespeichert", `${route.stops.length} Stopps Â· ${formatKm(route.totalKm)}`, "celebrate");
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Route konnte nicht gespeichert werden.");
-      showToast("Backend-Speicherung fehlgeschlagen", "Die Route bleibt lokal auf diesem Gerät erhalten.", "error");
+      showToast("Backend-Speicherung fehlgeschlagen", "Die Route bleibt lokal auf diesem GerÃ¤t erhalten.", "error");
     } finally {
       setSaving(false);
     }
@@ -1574,7 +1574,7 @@ export default function Home() {
               {trip.dates}
             </p>
             <h1 className="truncate text-[19px] font-black leading-none text-[#0e302e] sm:text-xl">
-              {trip.title} · {trip.people}
+              {trip.title} Â· {trip.people}
             </h1>
           </button>
           <SyncPill error={Boolean(error)} loading={loading} sourceKind={appState.source.kind} />
@@ -1721,19 +1721,19 @@ export default function Home() {
                   : "bg-[#dff6ed] text-[#125f68]",
             )}
           >
-            {toast.tone === "error" ? "!" : toast.tone === "celebrate" ? "✦" : "✓"}
+            {toast.tone === "error" ? "!" : toast.tone === "celebrate" ? "âœ¦" : "âœ“"}
           </span>
           <span className="min-w-0 flex-1">
             <span className="block text-sm font-black leading-tight">{toast.title}</span>
             {toast.detail && <span className="mt-0.5 block truncate text-xs font-bold opacity-72">{toast.detail}</span>}
           </span>
           <button
-            aria-label="Meldung schließen"
+            aria-label="Meldung schlieÃŸen"
             className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white/58 text-lg font-black text-current transition active:scale-95"
             onClick={() => setToast(null)}
             type="button"
           >
-            ×
+            Ã—
           </button>
         </div>
       )}
@@ -1817,10 +1817,10 @@ function Hero({
       <div className="relative mx-auto flex max-w-6xl flex-wrap items-end justify-between gap-4 px-4 py-7 text-white sm:py-9">
         <div className="min-w-0">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#b8f4eb] sm:text-sm">
-            {trip.hotel} · Frangokastello
+            {trip.hotel} Â· Frangokastello
           </p>
           <h2 className="mt-2 text-3xl font-black leading-[1.02] sm:text-5xl">
-            Kreta läuft.
+            Kreta lÃ¤uft.
             <span className="block text-[#ffe1a8]">Jan &amp; Luca ready.</span>
           </h2>
           <div className="mt-4 flex flex-wrap gap-2">
@@ -1830,7 +1830,7 @@ function Hero({
             {weather?.current && (
               <span className="inline-flex h-10 items-center gap-2 rounded-full border border-white/35 bg-white/12 px-4 text-sm font-black backdrop-blur">
                 {weatherCodeEmoji(weatherCode, isDay)}
-                {weather.current.temperature != null ? `${Math.round(weather.current.temperature)} °C` : weatherCodeLabel(weatherCode)}
+                {weather.current.temperature != null ? `${Math.round(weather.current.temperature)} Â°C` : weatherCodeLabel(weatherCode)}
               </span>
             )}
             <button
@@ -1919,29 +1919,29 @@ function HomeView({
     dashboard.direction === "ausgeglichen"
       ? "Ausgeglichen"
       : dashboard.direction === "luca_an_jan"
-        ? `Luca → Jan ${money(dashboard.settlementAmount)}`
-        : `Jan → Luca ${money(dashboard.settlementAmount)}`;
+        ? `Luca â†’ Jan ${money(dashboard.settlementAmount)}`
+        : `Jan â†’ Luca ${money(dashboard.settlementAmount)}`;
 
   const quickCards: Array<{ emoji: string; label: string; sub: string; action: () => void }> = [
-    { emoji: "➕", label: "Ausgabe eintragen", sub: "Schnell erfassen", action: onQuickExpense },
+    { emoji: "âž•", label: "Ausgabe eintragen", sub: "Schnell erfassen", action: onQuickExpense },
     {
-      emoji: "🗓️",
+      emoji: "ðŸ—“ï¸",
       label: "Heutiger Plan",
       sub: planTitle ? planTitle : "Im Smart Planer bauen",
       action: () => setView("routen"),
     },
     {
-      emoji: "🧭",
-      label: "Tagesroute öffnen",
+      emoji: "ðŸ§­",
+      label: "Tagesroute Ã¶ffnen",
       sub: planMaps ? "Navigation in Maps" : "Noch keine Route",
       action: () => {
         if (planMaps && planMaps !== "#") window.open(planMaps, "_blank", "noreferrer");
         else setView("routen");
       },
     },
-    { emoji: "🎒", label: "Packliste", sub: "Abhaken für beide", action: () => setView("packen") },
+    { emoji: "ðŸŽ’", label: "Packliste", sub: "Abhaken fÃ¼r beide", action: () => setView("packen") },
     {
-      emoji: "🍽️",
+      emoji: "ðŸ½ï¸",
       label: "Restaurants",
       sub: `${restaurantsCount} Kreta-Tipps`,
       action: () => {
@@ -1950,23 +1950,23 @@ function HomeView({
       },
     },
     {
-      emoji: "📸",
-      label: "Sehenswürdigkeiten",
+      emoji: "ðŸ“¸",
+      label: "SehenswÃ¼rdigkeiten",
       sub: `${placesCount} echte Orte`,
       action: () => {
         setGuideMode("sights");
         setView("guide");
       },
     },
-    { emoji: "🗺️", label: "Karte", sub: "Hotel, POIs, Routen", action: () => setView("karte") },
-    { emoji: "🤖", label: "Smart Route", sub: "Tagesplan generieren", action: () => setView("routen") },
+    { emoji: "ðŸ—ºï¸", label: "Karte", sub: "Hotel, POIs, Routen", action: () => setView("karte") },
+    { emoji: "ðŸ¤–", label: "Smart Route", sub: "Tagesplan generieren", action: () => setView("routen") },
     {
-      emoji: "✈️",
+      emoji: "âœˆï¸",
       label: "Reise",
-      sub: outboundFlight ? `${outboundFlight.number} · ${outboundFlight.dep}` : "Flug & Bahn",
+      sub: outboundFlight ? `${outboundFlight.number} Â· ${outboundFlight.dep}` : "Flug & Bahn",
       action: () => setView("reise"),
     },
-    { emoji: "💶", label: "Kosten & Ausgleich", sub: settlementShort, action: () => setView("kosten") },
+    { emoji: "ðŸ’¶", label: "Kosten & Ausgleich", sub: settlementShort, action: () => setView("kosten") },
   ];
 
   return (
@@ -1988,7 +1988,7 @@ function HomeView({
           <span className="text-[11px] font-black uppercase tracking-[0.12em] text-[#789087]">Ausgleich aktuell</span>
           <span className="truncate text-[15px] font-black tabular-nums text-[#125f68]">{settlementShort}</span>
         </span>
-        <span className="text-xl font-black text-[#9bb0a7]">›</span>
+        <span className="text-xl font-black text-[#9bb0a7]">â€º</span>
       </button>
 
       <WeatherCockpit
@@ -2001,7 +2001,7 @@ function HomeView({
 
       <section className="ios-glass-card overflow-hidden rounded-[24px] p-4">
         <div className="flex items-start justify-between gap-3">
-          <SectionTitle kicker="Reisefortschritt" title={progress > 0 ? `${progress} % Kreta-Modus` : "Die Reise rückt näher"} />
+          <SectionTitle kicker="Reisefortschritt" title={progress > 0 ? `${progress} % Kreta-Modus` : "Die Reise rÃ¼ckt nÃ¤her"} />
           <span className="rounded-full bg-[#e7f4ee] px-3 py-1.5 text-xs font-black text-[#125f68]">
             {trip.dates}
           </span>
@@ -2011,11 +2011,11 @@ function HomeView({
         </div>
         <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.12em] text-[#789087]">Nächster Reisebaustein</p>
+            <p className="text-xs font-black uppercase tracking-[0.12em] text-[#789087]">NÃ¤chster Reisebaustein</p>
             {nextMoment ? (
               <>
                 <p className="mt-1 text-lg font-black text-[#0e302e]">
-                  {nextMoment.kind === "flight" ? "✈️" : "🚆"} {nextMoment.title}
+                  {nextMoment.kind === "flight" ? "âœˆï¸" : "ðŸš†"} {nextMoment.title}
                 </p>
                 <p className="mt-1 text-sm font-semibold text-[#5b6f68]">{nextMoment.detail}</p>
               </>
@@ -2028,7 +2028,7 @@ function HomeView({
             onClick={() => setView("reise")}
             type="button"
           >
-            Reise öffnen
+            Reise Ã¶ffnen
           </button>
         </div>
       </section>
@@ -2054,7 +2054,7 @@ function HomeView({
       {planTitle && (
         <section className="ios-glass-card rounded-[24px] border-[#125f68]/22 p-4">
           <div className="flex items-start justify-between gap-3">
-            <SectionTitle kicker={planIsToday ? "Heutiger Plan" : "Nächster Plan"} title={planTitle} />
+            <SectionTitle kicker={planIsToday ? "Heutiger Plan" : "NÃ¤chster Plan"} title={planTitle} />
             {planMaps && planMaps !== "#" && (
               <a
                 className="shrink-0 rounded-[10px] bg-[#125f68] px-4 py-2.5 text-sm font-black text-white transition hover:bg-[#0e4d54]"
@@ -2062,14 +2062,14 @@ function HomeView({
                 rel="noreferrer"
                 target="_blank"
               >
-                🧭 Starten
+                ðŸ§­ Starten
               </a>
             )}
           </div>
           {planStops.length > 0 && (
             <p className="mt-3 text-sm font-semibold leading-6 text-[#44635b]">
-              {planStops.slice(0, 6).join(" → ")}
-              {planStops.length > 6 ? " → …" : ""}
+              {planStops.slice(0, 6).join(" â†’ ")}
+              {planStops.length > 6 ? " â†’ â€¦" : ""}
             </p>
           )}
         </section>
@@ -2080,14 +2080,14 @@ function HomeView({
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#9de7dc]">Vor Ort ausgegeben</p>
           <p className="mt-2 text-2xl font-black tabular-nums">{money(dashboard.onTrip.amount)}</p>
           <p className="mt-1 text-sm font-semibold text-white/72">
-            {latestExpense ? `Zuletzt: ${latestExpense.category} · ${money(latestExpense.amount)}` : "Noch keine Vor-Ort-Ausgabe."}
+            {latestExpense ? `Zuletzt: ${latestExpense.category} Â· ${money(latestExpense.amount)}` : "Noch keine Vor-Ort-Ausgabe."}
           </p>
           <button
             className="mt-3 h-11 w-full rounded-[10px] bg-[#ffe1a8] px-4 text-sm font-black text-[#0e302e] transition hover:bg-[#ffd585]"
             onClick={onQuickExpense}
             type="button"
           >
-            + Ausgabe hinzufügen
+            + Ausgabe hinzufÃ¼gen
           </button>
         </div>
         <div className="ios-glass-card overflow-hidden rounded-[24px]">
@@ -2101,9 +2101,9 @@ function HomeView({
             />
           </div>
           <div className="p-3.5">
-            <p className="text-sm font-black text-[#0e302e]">Jan &amp; Luca · {trip.dates}</p>
+            <p className="text-sm font-black text-[#0e302e]">Jan &amp; Luca Â· {trip.dates}</p>
             <p className="mt-1 text-sm font-semibold leading-6 text-[#5b6f68]">
-              Schnelle Kosten, gute Stopps und genug Luft für spontane Strandentscheidungen.
+              Schnelle Kosten, gute Stopps und genug Luft fÃ¼r spontane Strandentscheidungen.
             </p>
           </div>
         </div>
@@ -2149,7 +2149,7 @@ function CostsView({
         <ExpenseForm onCreateExpense={onCreateExpense} saving={saving} title="Ausgabe eintragen" />
 
         <section className="ios-glass-card rounded-[24px] p-4">
-          <SectionTitle kicker="Vor Ort" title="Aktuelle Einträge" />
+          <SectionTitle kicker="Vor Ort" title="Aktuelle EintrÃ¤ge" />
           <div className="mt-4 grid gap-3">
             {expenses.length === 0 && (
               <p className="rounded-[8px] bg-[#eff6f2] p-4 text-sm font-semibold text-[#44635b]">
@@ -2207,7 +2207,7 @@ function WeatherCockpit({
             <p className="text-xs font-black uppercase tracking-[0.16em] text-[#9de7dc]">Heute in Frangokastello</p>
             <h2 className="mt-1 text-2xl font-black">
               {loading && !weather
-                ? "Wetter wird geladen…"
+                ? "Wetter wird geladenâ€¦"
                 : `${weatherCodeEmoji(code, current?.isDay ?? true)} ${weatherCodeLabel(code)}`}
             </h2>
           </div>
@@ -2217,7 +2217,7 @@ function WeatherCockpit({
             onClick={onRefresh}
             type="button"
           >
-            {loading ? "Aktualisiert…" : "↻ Aktualisieren"}
+            {loading ? "Aktualisiertâ€¦" : "â†» Aktualisieren"}
           </button>
         </div>
 
@@ -2230,26 +2230,26 @@ function WeatherCockpit({
             <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
               <WeatherFact
                 label="Temperatur"
-                value={current?.temperature != null ? `${Math.round(current.temperature)} °C` : "–"}
+                value={current?.temperature != null ? `${Math.round(current.temperature)} Â°C` : "â€“"}
               />
               <WeatherFact
                 label="Regen"
-                value={day?.precipitationProbabilityMax != null ? `${Math.round(day.precipitationProbabilityMax)} %` : "–"}
+                value={day?.precipitationProbabilityMax != null ? `${Math.round(day.precipitationProbabilityMax)} %` : "â€“"}
               />
-              <WeatherFact label="UV max." value={day?.uvIndexMax != null ? day.uvIndexMax.toFixed(1) : "–"} />
+              <WeatherFact label="UV max." value={day?.uvIndexMax != null ? day.uvIndexMax.toFixed(1) : "â€“"} />
               <WeatherFact
                 label="Wind"
-                value={day?.windGustMax != null ? `${Math.round(day.windGustMax)} km/h` : "–"}
+                value={day?.windGustMax != null ? `${Math.round(day.windGustMax)} km/h` : "â€“"}
               />
               <WeatherFact
                 label="Wellen"
-                value={weather.marine?.waveHeightMax != null ? `${weather.marine.waveHeightMax.toFixed(1)} m` : "–"}
+                value={weather.marine?.waveHeightMax != null ? `${weather.marine.waveHeightMax.toFixed(1)} m` : "â€“"}
               />
               <WeatherFact label="Sonne auf" value={timeFromIso(day?.sunrise)} />
               <WeatherFact label="Sonne unter" value={timeFromIso(day?.sunset)} />
               <WeatherFact
-                label="Gefühlt"
-                value={current?.apparentTemperature != null ? `${Math.round(current.apparentTemperature)} °C` : "–"}
+                label="GefÃ¼hlt"
+                value={current?.apparentTemperature != null ? `${Math.round(current.apparentTemperature)} Â°C` : "â€“"}
               />
             </div>
             {weather.advisories.length > 0 && (
@@ -2271,8 +2271,8 @@ function WeatherCockpit({
               </div>
             )}
             <p className="mt-4 text-xs font-semibold leading-5 text-white/62">
-              {checkedLabel ? `Stand ${checkedLabel} Uhr · ` : ""}
-              Open‑Meteo Modellprognose, keine amtliche Warnung oder Küstennavigation.
+              {checkedLabel ? `Stand ${checkedLabel} Uhr Â· ` : ""}
+              Openâ€‘Meteo Modellprognose, keine amtliche Warnung oder KÃ¼stennavigation.
             </p>
           </>
         ) : null}
@@ -2310,12 +2310,12 @@ function SettlementPaymentForm({
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (parsedAmount === null) {
-      setFormError("Bitte einen gültigen Betrag eingeben.");
+      setFormError("Bitte einen gÃ¼ltigen Betrag eingeben.");
       return;
     }
     setFormError("");
     const ok = await onCreateExpense({
-      travelDay: `Ausgleich · ${new Intl.DateTimeFormat("de-DE").format(new Date())}`,
+      travelDay: `Ausgleich Â· ${new Intl.DateTimeFormat("de-DE").format(new Date())}`,
       category: "Ausgleichszahlung",
       amount: parsedAmount,
       paidBy: payer,
@@ -2343,7 +2343,7 @@ function SettlementPaymentForm({
         )}
       </div>
       <p className="mt-3 text-sm font-semibold leading-6 text-[#5b6f68]">
-        Tragt hier eine echte Zahlung zwischen euch ein. Sie reduziert den Ausgleich, ohne den Reise-Gesamtbetrag zu erhöhen.
+        Tragt hier eine echte Zahlung zwischen euch ein. Sie reduziert den Ausgleich, ohne den Reise-Gesamtbetrag zu erhÃ¶hen.
       </p>
       <div className="mt-4 grid gap-3 md:grid-cols-[1fr_1fr_auto]">
         <label className="grid gap-1.5">
@@ -2353,10 +2353,10 @@ function SettlementPaymentForm({
               className="h-12 w-full rounded-[16px] border border-[#cbdad2] bg-white/86 px-3 pr-10 text-lg font-black tabular-nums text-[#0e302e] outline-none transition focus:border-[#125f68]"
               inputMode="decimal"
               onChange={(event) => setAmount(event.target.value)}
-              placeholder="frei wählbar"
+              placeholder="frei wÃ¤hlbar"
               value={amount}
             />
-            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-base font-black text-[#789087]">€</span>
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-base font-black text-[#789087]">â‚¬</span>
           </span>
         </label>
         <div className="grid gap-1.5">
@@ -2375,7 +2375,7 @@ function SettlementPaymentForm({
                   onClick={() => setPayer(person)}
                   type="button"
                 >
-                  {person} → {to}
+                  {person} â†’ {to}
                 </button>
               );
             })}
@@ -2412,7 +2412,7 @@ function ExpenseForm({
   title: string;
 }) {
   const [travelDay, setTravelDay] = useState(todayTravelDayLabel() ?? lists.travelDays[0] ?? "Mi, 01.07.");
-  const [category, setCategory] = useState("Restaurants & Cafés");
+  const [category, setCategory] = useState("Restaurants & CafÃ©s");
   const [paidBy, setPaidBy] = useState<"Luca" | "Jan">("Luca");
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
@@ -2436,7 +2436,7 @@ function ExpenseForm({
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (parsedAmount === null) {
-      setFormError("Bitte einen gültigen Betrag eingeben, z. B. 18,40.");
+      setFormError("Bitte einen gÃ¼ltigen Betrag eingeben, z. B. 18,40.");
       amountRef.current?.focus();
       return;
     }
@@ -2480,7 +2480,7 @@ function ExpenseForm({
             ref={amountRef}
             value={amount}
           />
-          <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xl font-black text-[#789087]">€</span>
+          <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xl font-black text-[#789087]">â‚¬</span>
         </span>
       </label>
 
@@ -2572,7 +2572,7 @@ function ExpenseForm({
         {splitPreset === "custom" && (
           <div className="grid gap-2 rounded-[12px] bg-[#eff6f2] p-3">
             <label className="grid gap-2 text-sm font-bold text-[#34554e]">
-              Luca: {Math.round(splitLuca * 100)} % · Jan: {Math.round(splitJan * 100)} %
+              Luca: {Math.round(splitLuca * 100)} % Â· Jan: {Math.round(splitJan * 100)} %
               <input
                 max={100}
                 min={0}
@@ -2608,7 +2608,7 @@ function ExpenseForm({
         disabled={saving}
         type="submit"
       >
-        {saving ? "Wird gespeichert…" : parsedAmount !== null ? `${money(parsedAmount)} speichern` : "Speichern"}
+        {saving ? "Wird gespeichertâ€¦" : parsedAmount !== null ? `${money(parsedAmount)} speichern` : "Speichern"}
       </button>
     </form>
   );
@@ -2654,7 +2654,7 @@ function DeleteExpenseDialog({
       role="presentation"
     >
       <section
-        aria-label="Ausgabe löschen bestätigen"
+        aria-label="Ausgabe lÃ¶schen bestÃ¤tigen"
         aria-modal="true"
         className="ios-alert-panel quick-sheet max-h-[calc(100dvh-28px)] w-full max-w-md overflow-y-auto rounded-[28px] border border-white/64 bg-[#fbfdf9]/90 p-4 pb-[calc(16px+env(safe-area-inset-bottom))] shadow-[0_24px_70px_rgba(0,0,0,0.28)] sm:rounded-[30px]"
         onClick={(event) => event.stopPropagation()}
@@ -2663,7 +2663,7 @@ function DeleteExpenseDialog({
         <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-[#c9d8d0] sm:hidden" />
         <p className="text-xs font-black uppercase tracking-[0.16em] text-[#8c3219]">Bist du sicher?</p>
         <h2 className="mt-1 text-2xl font-black text-[#0e302e]">
-          {settlement ? "Ausgleichzahlung löschen" : "Ausgabe löschen"}
+          {settlement ? "Ausgleichzahlung lÃ¶schen" : "Ausgabe lÃ¶schen"}
         </h2>
         <div className="mt-4 rounded-[20px] border border-white/72 bg-white/72 p-4 shadow-sm">
           <p className="text-sm font-bold text-[#357179]">{expense.travelDay}</p>
@@ -2693,7 +2693,7 @@ function DeleteExpenseDialog({
             onClick={onConfirm}
             type="button"
           >
-            {saving ? "Lösche..." : "Ja, löschen"}
+            {saving ? "LÃ¶sche..." : "Ja, lÃ¶schen"}
           </button>
         </div>
       </section>
@@ -2784,7 +2784,7 @@ function QuickExpenseSheet({
         style={{ "--sheet-drag-y": `${dragY}px` } as CSSProperties}
       >
         <button
-          aria-label="Ausgabenfenster nach unten ziehen oder schließen"
+          aria-label="Ausgabenfenster nach unten ziehen oder schlieÃŸen"
           className="sheet-drag-handle -mx-1 -mt-2 mb-1 flex h-8 w-[calc(100%+8px)] touch-none items-center justify-center sm:hidden"
           onClick={() => {
             if (!suppressHandleClick.current) onClose();
@@ -2801,12 +2801,12 @@ function QuickExpenseSheet({
         <div className="flex items-center justify-between px-1 pb-1">
           <p className="text-lg font-black text-[#0e302e]">Ausgabe eintragen</p>
           <button
-            aria-label="Schließen"
+            aria-label="SchlieÃŸen"
             className="grid h-10 w-10 place-items-center rounded-full bg-[#eff6f2] text-base font-black text-[#125f68] transition hover:bg-[#dcebe3]"
             onClick={onClose}
             type="button"
           >
-            ✕
+            âœ•
           </button>
         </div>
         <ExpenseForm compact onCreateExpense={onCreateExpense} onSaved={onClose} saving={saving} title="+ Ausgabe" />
@@ -2857,10 +2857,10 @@ function TravelView({ flights, trains }: { flights: Flight[]; trains: TrainLeg[]
   const inboundFlight = flights.find((flight) => stripDiacritics(normalizedText(flight.direction)).includes("ruck")) ?? flights[1];
   const checkingAll = trains.some((leg) => railState[leg.id]?.statusLoading);
   const tabs = [
-    { id: "outbound-trains", label: "Hin-Züge" },
+    { id: "outbound-trains", label: "Hin-ZÃ¼ge" },
     { id: "outbound-flight", label: "Hin-Flug" },
-    { id: "inbound-flight", label: "Rück-Flug" },
-    { id: "inbound-trains", label: "Rück-Züge" },
+    { id: "inbound-flight", label: "RÃ¼ck-Flug" },
+    { id: "inbound-trains", label: "RÃ¼ck-ZÃ¼ge" },
   ];
 
   async function checkStatus(leg: TrainLeg, orderedLegs: TrainLeg[]) {
@@ -2955,7 +2955,7 @@ function TravelView({ flights, trains }: { flights: Flight[]; trains: TrainLeg[]
               onClick={() => void checkAllTrains()}
               type="button"
             >
-              {checkingAll ? "Prüft Bahnreise…" : "Alle Bahnabschnitte prüfen"}
+              {checkingAll ? "PrÃ¼ft Bahnreiseâ€¦" : "Alle Bahnabschnitte prÃ¼fen"}
             </button>
           )}
         </div>
@@ -3017,8 +3017,8 @@ function TravelView({ flights, trains }: { flights: Flight[]; trains: TrainLeg[]
         <SectionTitle kicker="Basis" title={trip.hotel} />
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm font-semibold text-[#44635b]">
-            Frangokastello 730 11, Kreta. Praktischer Ausgangspunkt für Sfakia,
-            Loutro, Imbros, Plakias und Südküste.
+            Frangokastello 730 11, Kreta. Praktischer Ausgangspunkt fÃ¼r Sfakia,
+            Loutro, Imbros, Plakias und SÃ¼dkÃ¼ste.
           </p>
           <a
             className="rounded-[8px] bg-[#125f68] px-4 py-3 text-sm font-black text-white transition hover:bg-[#0e4d54]"
@@ -3026,7 +3026,7 @@ function TravelView({ flights, trains }: { flights: Flight[]; trains: TrainLeg[]
             rel="noreferrer"
             target="_blank"
           >
-            Maps öffnen
+            Maps Ã¶ffnen
           </a>
         </div>
       </section>
@@ -3110,13 +3110,13 @@ function RoutesView({
         if (available.length > 0) {
           weatherByPoint = new Map(available.map((point) => [point.id, point]));
           checkedAt = result.checkedAt;
-          setWeatherNotice(`${available.length} Wetterpunkte für ${day} berücksichtigt.`);
+          setWeatherNotice(`${available.length} Wetterpunkte fÃ¼r ${day} berÃ¼cksichtigt.`);
         } else {
-          setWeatherNotice("Für diesen Reisetag liegt noch keine belastbare Vorhersage vor. Route ohne Wettergewichtung berechnet.");
+          setWeatherNotice("FÃ¼r diesen Reisetag liegt noch keine belastbare Vorhersage vor. Route ohne Wettergewichtung berechnet.");
         }
       } catch (weatherLoadError) {
         setWeatherNotice(
-          `${weatherLoadError instanceof Error ? weatherLoadError.message : "Wetter nicht verfügbar."} Route ohne Wettergewichtung berechnet.`,
+          `${weatherLoadError instanceof Error ? weatherLoadError.message : "Wetter nicht verfÃ¼gbar."} Route ohne Wettergewichtung berechnet.`,
         );
       } finally {
         setWeatherLoading(false);
@@ -3163,7 +3163,7 @@ function RoutesView({
             onClick={() => void generateRoute()}
             type="button"
           >
-            {weatherLoading ? "Wetter wird geprüft…" : "Route berechnen"}
+            {weatherLoading ? "Wetter wird geprÃ¼ftâ€¦" : "Route berechnen"}
           </button>
         </div>
 
@@ -3220,7 +3220,7 @@ function RoutesView({
                 onChange={(event) => setWeatherEnabled(event.target.checked)}
                 type="checkbox"
               />
-              Wetter berücksichtigen
+              Wetter berÃ¼cksichtigen
             </label>
           </div>
           {weatherNotice && (
@@ -3253,7 +3253,7 @@ function RoutesView({
               label="Tageslicht"
               value={(() => {
                 const dayWeather = plannedRoute.stops.find((stop) => stop.weather?.available)?.weather?.day;
-                return dayWeather ? `${timeFromIso(dayWeather.sunrise)}–${timeFromIso(dayWeather.sunset)}` : "ohne Prognose";
+                return dayWeather ? `${timeFromIso(dayWeather.sunrise)}â€“${timeFromIso(dayWeather.sunset)}` : "ohne Prognose";
               })()}
             />
           </div>
@@ -3269,15 +3269,15 @@ function RoutesView({
                       {stop.kind === "restaurant" ? restaurantEmoji(stop.category) : tourismEmoji(stop.category)} {stop.title}
                     </p>
                     <p className="mt-1 text-sm font-semibold text-[#5b6f68]">
-                      {stop.arrivalMinutes != null ? `${timeLabel(stop.arrivalMinutes)} · ` : ""}
-                      {stop.category} · {stop.reason}
+                      {stop.arrivalMinutes != null ? `${timeLabel(stop.arrivalMinutes)} Â· ` : ""}
+                      {stop.category} Â· {stop.reason}
                     </p>
                     {stop.weather?.available && stop.weather.day && (
                       <p className="mt-2 text-xs font-black text-[#357179]">
                         {weatherCodeEmoji(stop.weather.day.weatherCode)} {weatherCodeLabel(stop.weather.day.weatherCode)}
-                        {stop.weather.day.temperatureMax != null ? ` · bis ${Math.round(stop.weather.day.temperatureMax)} °C` : ""}
+                        {stop.weather.day.temperatureMax != null ? ` Â· bis ${Math.round(stop.weather.day.temperatureMax)} Â°C` : ""}
                         {stop.weather.day.precipitationProbabilityMax != null
-                          ? ` · ${Math.round(stop.weather.day.precipitationProbabilityMax)} % Regen`
+                          ? ` Â· ${Math.round(stop.weather.day.precipitationProbabilityMax)} % Regen`
                           : ""}
                       </p>
                     )}
@@ -3309,7 +3309,7 @@ function RoutesView({
                 rel="noreferrer"
                 target="_blank"
               >
-                Maps-Route {plannedRoute.mapsLinks.length > 1 ? index + 1 : "öffnen"}
+                Maps-Route {plannedRoute.mapsLinks.length > 1 ? index + 1 : "Ã¶ffnen"}
               </a>
             ))}
           </div>
@@ -3319,7 +3319,7 @@ function RoutesView({
               {new Intl.DateTimeFormat("de-DE", { dateStyle: "short", timeStyle: "short" }).format(
                 new Date(plannedRoute.weatherCheckedAt),
               )}
-              . Modellprognose von Open‑Meteo.
+              . Modellprognose von Openâ€‘Meteo.
             </p>
           )}
         </section>
@@ -3428,7 +3428,7 @@ function SavedSmartRouteCard({ route }: { route: PlannedRoute }) {
         <StatusPill>{route.stress}</StatusPill>
       </div>
       <p className="mt-3 text-sm font-semibold text-[#44635b]">
-        {route.stops.map((stop) => stop.title).join(" · ")}
+        {route.stops.map((stop) => stop.title).join(" Â· ")}
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
         <SoftPill>{formatDuration(route.totalMinutes)}</SoftPill>
@@ -3441,7 +3441,7 @@ function SavedSmartRouteCard({ route }: { route: PlannedRoute }) {
         rel="noreferrer"
         target="_blank"
       >
-        Maps öffnen
+        Maps Ã¶ffnen
       </a>
     </article>
   );
@@ -3521,7 +3521,7 @@ function MapView({
       const map = L.map(mapElementRef.current, { scrollWheelZoom: true }).setView([35.24, 24.85], 9);
       mapRef.current = map;
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "© OpenStreetMap",
+        attribution: "Â© OpenStreetMap",
         maxZoom: 18,
       }).addTo(map);
 
@@ -3529,7 +3529,7 @@ function MapView({
       const addPoint = (point: RoutePoint) => {
         bounds.push([point.lat, point.lng]);
         const topPoint = priorityScore(point.priority) >= 42 || (point.rating ?? 0) >= 4.7;
-        const emoji = point.kind === "restaurant" ? restaurantEmoji(point.category) : point.kind === "hotel" ? "🏨" : tourismEmoji(point.category);
+        const emoji = point.kind === "restaurant" ? restaurantEmoji(point.category) : point.kind === "hotel" ? "ðŸ¨" : tourismEmoji(point.category);
         const marker = L.marker([point.lat, point.lng], {
           icon: L.divIcon({
             className: "",
@@ -3540,7 +3540,7 @@ function MapView({
         marker
           .addTo(map)
           .bindPopup(
-            `<strong>${escapeHtml(point.title)}</strong><br/><span>${escapeHtml(point.category)}</span><br/><span>${point.rating ? `Google ${point.rating.toLocaleString("de-DE")}` : escapeHtml(point.priority)}</span><br/><span>${formatKm(distanceKm(hotelPoint, point))} ab Hotel</span><br/><a href="${escapeHtml(point.maps)}" target="_blank" rel="noreferrer">Maps öffnen</a>`,
+            `<strong>${escapeHtml(point.title)}</strong><br/><span>${escapeHtml(point.category)}</span><br/><span>${point.rating ? `Google ${point.rating.toLocaleString("de-DE")}` : escapeHtml(point.priority)}</span><br/><span>${formatKm(distanceKm(hotelPoint, point))} ab Hotel</span><br/><a href="${escapeHtml(point.maps)}" target="_blank" rel="noreferrer">Maps Ã¶ffnen</a>`,
           )
           .on("click", () => setSelectedPoint(point));
       };
@@ -3619,7 +3619,7 @@ function MapView({
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
           <MapLayerButton active={layers.top} onClick={() => toggleLayer("top")}>Top</MapLayerButton>
-          <MapLayerButton active={layers.beaches} onClick={() => toggleLayer("beaches")}>Strände</MapLayerButton>
+          <MapLayerButton active={layers.beaches} onClick={() => toggleLayer("beaches")}>StrÃ¤nde</MapLayerButton>
           <MapLayerButton active={layers.nature} onClick={() => toggleLayer("nature")}>Natur</MapLayerButton>
           <MapLayerButton active={layers.culture} onClick={() => toggleLayer("culture")}>Kultur</MapLayerButton>
           <MapLayerButton active={layers.restaurants} onClick={() => toggleLayer("restaurants")}>Restaurants</MapLayerButton>
@@ -3660,7 +3660,7 @@ function MapView({
               onClick={() => addPointToMapRoute(selectedPoint)}
               type="button"
             >
-              Zur Route hinzufügen
+              Zur Route hinzufÃ¼gen
             </button>
             <a
               className="rounded-[8px] bg-[#f1f5f2] px-4 py-3 text-sm font-black text-[#34554e] transition hover:bg-[#e3ece7]"
@@ -3668,7 +3668,7 @@ function MapView({
               rel="noreferrer"
               target="_blank"
             >
-              Maps öffnen
+              Maps Ã¶ffnen
             </a>
           </div>
         </section>
@@ -3822,7 +3822,7 @@ function GuideView({
   );
 
   const visibleCount = guideMode === "restaurants" ? filteredRestaurants.length : filteredPlaces.length;
-  const activeLabel = guideMode === "restaurants" ? "Restaurants" : "Sehenswürdigkeiten";
+  const activeLabel = guideMode === "restaurants" ? "Restaurants" : "SehenswÃ¼rdigkeiten";
   const resetFilters = () => {
     setQuery("");
     setRegionFilter("all");
@@ -3842,7 +3842,7 @@ function GuideView({
             Restaurants
           </TabButton>
           <TabButton active={guideMode === "sights"} onClick={() => setGuideMode("sights")}>
-            Sehenswürdigkeiten
+            SehenswÃ¼rdigkeiten
           </TabButton>
         </div>
       </section>
@@ -3853,8 +3853,8 @@ function GuideView({
           onChange={(event) => setQuery(event.target.value)}
           placeholder={
             guideMode === "restaurants"
-              ? "Restaurant, Ort, Küche, Rating suchen"
-              : "Sehenswürdigkeit, Region, Typ suchen"
+              ? "Restaurant, Ort, KÃ¼che, Rating suchen"
+              : "SehenswÃ¼rdigkeit, Region, Typ suchen"
           }
           value={query}
         />
@@ -3867,7 +3867,7 @@ function GuideView({
         </div>
         {guideMode === "restaurants" ? (
           <div className="grid gap-4">
-            <FilterPillGroup label="Küche" onChange={setRestaurantCuisineFilter} options={restaurantCuisineFilters} value={restaurantCuisineFilter} />
+            <FilterPillGroup label="KÃ¼che" onChange={setRestaurantCuisineFilter} options={restaurantCuisineFilters} value={restaurantCuisineFilter} />
             <FilterPillGroup label="Veggie" onChange={setVeggieFilter} options={veggieFilters} value={veggieFilter} />
           </div>
         ) : (
@@ -3933,7 +3933,7 @@ function PackView({
           <div className="h-full rounded-full bg-[#125f68] transition-all" style={{ width: `${progress}%` }} />
         </div>
         <p className="mt-3 text-sm font-semibold text-[#5b6f68]">
-          L und J einzeln antippen, der Stand wird für beide gespeichert.
+          L und J einzeln antippen, der Stand wird fÃ¼r beide gespeichert.
         </p>
       </section>
 
@@ -3956,7 +3956,7 @@ function PackView({
                     )}
                   </p>
                   <p className="mt-0.5 truncate text-xs font-bold text-[#789087]">
-                    {[item.category, item.note].filter(Boolean).join(" · ")}
+                    {[item.category, item.note].filter(Boolean).join(" Â· ")}
                   </p>
                 </div>
                 <div className="flex shrink-0 gap-2">
@@ -4036,17 +4036,31 @@ function BalancePanel({
         <div className="flex items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
-              <p className="font-bold text-[#b8f4eb]">Wofür wurde Geld ausgegeben?</p>
+              <p className="font-bold text-[#b8f4eb]">WofÃ¼r wurde Geld ausgegeben?</p>
               <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-[0.12em] text-white/60">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#9fe0d5]" />
                 Live
               </span>
             </div>
-            <p className="mt-1 text-3xl font-black tabular-nums">{money(totalExpenses)}</p>
+            <p className="mt-1 text-3xl font-black tabular-nums">{money(activeTotal)}</p>
           </div>
-          <span className="rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-white/65">
-            Gesamt
-          </span>
+          <div className="flex gap-1">
+              {(["all", "fixed", "trip"] as const).map((mode) => (
+                <button
+                  className={classNames(
+                    "rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] transition",
+                    chartMode === mode
+                      ? "bg-[#9fe0d5] text-[#0d3535]"
+                      : "bg-white/10 text-white/65 hover:bg-white/18"
+                  )}
+                  key={mode}
+                  onClick={() => setChartMode(mode)}
+                  type="button"
+                >
+                  {mode === "all" ? "Gesamt" : mode === "fixed" ? "Vorfeld" : "Vor Ort"}
+                </button>
+              ))}
+            </div>
         </div>
 
         <div className="mt-4 grid items-center gap-4 min-[480px]:grid-cols-[112px_1fr]">
@@ -4058,13 +4072,13 @@ function BalancePanel({
           >
             <div className="absolute inset-[13px] grid place-items-center rounded-full bg-[#164f51] text-center">
               <div>
-                <span className="block text-[9px] font-black uppercase tracking-[0.1em] text-white/55">Gesamt</span>
-                <span className="mt-0.5 block text-sm font-black tabular-nums">{money(totalExpenses)}</span>
+                <span className="block text-[9px] font-black uppercase tracking-[0.1em] text-white/55">{chartModeLabel}</span>
+                <span className="mt-0.5 block text-sm font-black tabular-nums">{money(activeTotal)}</span>
               </div>
             </div>
           </div>
           <div className="grid gap-1.5">
-            {breakdown.slice(0, 5).map((item) => (
+            {activeBreakdown.slice(0, 5).map((item) => (
               <div className="flex min-w-0 items-center justify-between gap-2 text-xs" key={item.id}>
                 <div className="flex min-w-0 items-center gap-2">
                   <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: item.color }} />
@@ -4082,11 +4096,11 @@ function BalancePanel({
 
         <div className="mt-4 grid grid-cols-2 gap-2">
           <div className="rounded-[12px] bg-black/10 px-3 py-2.5">
-            <p className="text-[10px] font-black uppercase tracking-[0.1em] text-white/50">🧳 Im Vorfeld</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.1em] text-white/50">ðŸ§³ Im Vorfeld</p>
             <p className="mt-1 text-base font-black tabular-nums">{money(fixedExpenses)}</p>
           </div>
           <div className="rounded-[12px] bg-black/10 px-3 py-2.5">
-            <p className="text-[10px] font-black uppercase tracking-[0.1em] text-white/50">🌴 Vor Ort</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.1em] text-white/50">ðŸŒ´ Vor Ort</p>
             <p className="mt-1 text-base font-black tabular-nums">{money(tripExpenses)}</p>
           </div>
         </div>
@@ -4098,12 +4112,12 @@ function BalancePanel({
           onClick={() => setDetailsOpen((open) => !open)}
           type="button"
         >
-          <span>{detailsOpen ? "Details schließen" : "Alle Kategorien & Details"}</span>
+          <span>{detailsOpen ? "Details schlieÃŸen" : "Alle Kategorien & Details"}</span>
           <span
             aria-hidden="true"
             className={classNames("text-lg transition-transform", detailsOpen && "rotate-180")}
           >
-            ⌄
+            âŒ„
           </span>
         </button>
 
@@ -4112,13 +4126,13 @@ function BalancePanel({
             <CostBreakdownGroup
               emptyText="Noch keine Kosten im Vorfeld."
               items={fixedBreakdown}
-              title="🧳 Im Vorfeld"
+              title="ðŸ§³ Im Vorfeld"
               total={fixedExpenses}
             />
             <CostBreakdownGroup
-              emptyText="Noch keine Vor-Ort-Ausgaben. Tanken, Restaurants und weitere Einträge erscheinen hier automatisch."
+              emptyText="Noch keine Vor-Ort-Ausgaben. Tanken, Restaurants und weitere EintrÃ¤ge erscheinen hier automatisch."
               items={tripBreakdown}
-              title="🌴 Vor Ort"
+              title="ðŸŒ´ Vor Ort"
               total={tripExpenses}
             />
           </div>
@@ -4235,7 +4249,7 @@ function ExpenseRow({
   const isSettlement = Boolean(expense.isSettlement);
   const settlementRecipient = expense.paidBy === "Luca" ? "Jan" : "Luca";
   const balanceLabel = isSettlement
-    ? `${expense.paidBy} → ${settlementRecipient} · direkter Ausgleich`
+    ? `${expense.paidBy} â†’ ${settlementRecipient} Â· direkter Ausgleich`
     : expense.lucaBalance < 0
       ? `Luca an Jan ${money(Math.abs(expense.lucaBalance))}`
       : expense.lucaBalance > 0
@@ -4257,18 +4271,18 @@ function ExpenseRow({
         <div className="flex shrink-0 items-start gap-2">
           <p className="text-lg font-black tabular-nums text-[#0e302e]">{money(expense.amount)}</p>
           <button
-            aria-label={`${expense.category} löschen`}
+            aria-label={`${expense.category} lÃ¶schen`}
             className="grid h-10 w-10 place-items-center rounded-full border border-[#efc7bc] bg-white/88 text-lg font-black leading-none text-[#8c3219] shadow-sm transition active:scale-95 disabled:opacity-60"
             disabled={saving}
             onClick={onDelete}
             type="button"
           >
-            ×
+            Ã—
           </button>
         </div>
       </div>
       <p className="mt-2 text-sm font-semibold text-[#44635b]">
-        {isSettlement ? "Ausgleich" : `Bezahlt von ${expense.paidBy}`} · {balanceLabel}
+        {isSettlement ? "Ausgleich" : `Bezahlt von ${expense.paidBy}`} Â· {balanceLabel}
       </p>
       {expense.note && <p className="mt-1 text-sm font-medium text-[#5b6f68]">{expense.note}</p>}
     </article>
@@ -4357,7 +4371,7 @@ function VehicleImage({ alt, src }: { alt: string; src: string }) {
 function flightStatusLinks(flight: Flight) {
   const airportLinks = [
     `${flight.from} ${flight.to}`.includes("NUE")
-      ? { label: "Nürnberg Airport", href: "https://www.airport-nuernberg.de/en/flights" }
+      ? { label: "NÃ¼rnberg Airport", href: "https://www.airport-nuernberg.de/en/flights" }
       : null,
     `${flight.from} ${flight.to}`.includes("CHQ")
       ? { label: "Chania Airport", href: "https://www.chq-airport.gr/en/flight-list" }
@@ -4380,7 +4394,7 @@ function FlightCard({ flight }: { flight: Flight }) {
         <div>
           <p className="text-sm font-bold uppercase tracking-[0.14em] text-[#357179]">{flight.direction}</p>
           <h3 className="mt-1 text-2xl font-black text-[#0e302e]">
-            {flight.from} → {flight.to}
+            {flight.from} â†’ {flight.to}
           </h3>
         </div>
         <StatusPill>{flight.number}</StatusPill>
@@ -4400,7 +4414,7 @@ function FlightCard({ flight }: { flight: Flight }) {
           rel="noreferrer"
           target="_blank"
         >
-          Buchung öffnen
+          Buchung Ã¶ffnen
         </a>
         {statusLinks.map((link) => (
           <a
@@ -4419,10 +4433,10 @@ function FlightCard({ flight }: { flight: Flight }) {
 }
 
 function railStatusLabel(status?: RailStatusResult) {
-  if (!status) return "nicht geprüft";
+  if (!status) return "nicht geprÃ¼ft";
   if (status.state === "cancelled") return "Ausfall";
-  if (status.state === "delayed") return "verspätet";
-  if (status.state === "on_time") return "pünktlich";
+  if (status.state === "delayed") return "verspÃ¤tet";
+  if (status.state === "on_time") return "pÃ¼nktlich";
   if (status.state === "scheduled") return "nur Fahrplan";
   return "unbekannt";
 }
@@ -4437,7 +4451,7 @@ function railStatusClass(status?: RailStatusResult) {
 function delayLabel(delay: number | null, realtime: boolean) {
   if (!realtime) return "keine Echtzeit";
   if (delay === null) return "unbekannt";
-  if (delay <= 0) return "pünktlich";
+  if (delay <= 0) return "pÃ¼nktlich";
   return `+${delay} Min.`;
 }
 
@@ -4471,16 +4485,16 @@ function TrainLegCard({
           <p className="mt-1 text-sm font-bold text-[#357179]">{leg.train}</p>
         </div>
         <span className={classNames("shrink-0 rounded-full px-3 py-1.5 text-xs font-black", railStatusClass(status))}>
-          {state?.statusLoading ? "prüft..." : railStatusLabel(status)}
+          {state?.statusLoading ? "prÃ¼ft..." : railStatusLabel(status)}
         </span>
       </div>
       <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
         <Fact label="Datum" value={leg.date} />
         <Fact label="Zug" value={leg.train} />
-        <Fact label={leg.from} value={`${leg.dep} · Gleis ${leg.depPlatform}`} />
-        <Fact label={leg.to} value={`${leg.arr} · Gleis ${leg.arrPlatform}`} />
+        <Fact label={leg.from} value={`${leg.dep} Â· Gleis ${leg.depPlatform}`} />
+        <Fact label={leg.to} value={`${leg.arr} Â· Gleis ${leg.arrPlatform}`} />
         <Fact label="Auftrag" value={orderCode} />
-        <Fact label="Preis/Personen" value={`${leg.price} · 2 Personen`} />
+        <Fact label="Preis/Personen" value={`${leg.price} Â· 2 Personen`} />
       </div>
       <p className="mt-3 text-sm font-medium text-[#44635b]">{leg.note}</p>
       <div className="mt-4 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
@@ -4506,7 +4520,7 @@ function TrainLegCard({
           rel="noreferrer"
           target="_blank"
         >
-          Bei DB öffnen
+          Bei DB Ã¶ffnen
         </a>
         <CopyOrderButton code={orderCode} />
       </div>
@@ -4523,10 +4537,10 @@ function TrainLegCard({
       <details className="mt-4 rounded-[14px] bg-[#eff6f2] p-3">
         <summary className="cursor-pointer text-sm font-black text-[#0e302e]">Details & Bahn-Checkliste</summary>
         <ul className="mt-3 grid gap-2 text-sm font-semibold text-[#44635b]">
-          <li>Gleiswechsel und Echtzeitstatus kurz vor Abfahrt nochmals prüfen.</li>
-          <li>Zugbindung beachten; bei erwarteter Zielverspätung ab 20 Minuten Alternativen prüfen.</li>
-          <li>Ticket und Auftragscode offline verfügbar halten.</li>
-          <li>{checkedAt ? `Zuletzt manuell geprüft: ${checkedAt}.` : "Noch nicht live geprüft."}</li>
+          <li>Gleiswechsel und Echtzeitstatus kurz vor Abfahrt nochmals prÃ¼fen.</li>
+          <li>Zugbindung beachten; bei erwarteter ZielverspÃ¤tung ab 20 Minuten Alternativen prÃ¼fen.</li>
+          <li>Ticket und Auftragscode offline verfÃ¼gbar halten.</li>
+          <li>{checkedAt ? `Zuletzt manuell geprÃ¼ft: ${checkedAt}.` : "Noch nicht live geprÃ¼ft."}</li>
         </ul>
       </details>
       </div>
@@ -4547,7 +4561,7 @@ function TrainLegCard({
             <div>
               <p className="text-xs font-black uppercase tracking-[0.1em] text-[#789087]">Abfahrt</p>
               <p className="mt-1 font-black text-[#0e302e]">
-                {status.departure.actual || status.departure.planned} · {delayLabel(status.departure.delayMinutes, status.realtime)}
+                {status.departure.actual || status.departure.planned} Â· {delayLabel(status.departure.delayMinutes, status.realtime)}
               </p>
               <p className="mt-0.5 font-semibold text-[#5b6f68]">
                 Gleis {status.departure.platform || status.departure.plannedPlatform || "unbekannt"}
@@ -4556,7 +4570,7 @@ function TrainLegCard({
             <div>
               <p className="text-xs font-black uppercase tracking-[0.1em] text-[#789087]">Ankunft</p>
               <p className="mt-1 font-black text-[#0e302e]">
-                {status.arrival.actual || status.arrival.planned || leg.arr} · {delayLabel(status.arrival.delayMinutes, status.realtime)}
+                {status.arrival.actual || status.arrival.planned || leg.arr} Â· {delayLabel(status.arrival.delayMinutes, status.realtime)}
               </p>
               <p className="mt-0.5 font-semibold text-[#5b6f68]">
                 Gleis {status.arrival.platform || status.arrival.plannedPlatform || "unbekannt"}
@@ -4579,7 +4593,7 @@ function TrainLegCard({
                 onClick={() => void onFindAlternatives()}
                 type="button"
               >
-                Alternativen prüfen
+                Alternativen prÃ¼fen
               </button>
             </div>
           )}
@@ -4621,10 +4635,10 @@ function TrainLegCard({
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-lg font-black tabular-nums text-[#0e302e]">
-                        {alternative.departure} → {alternative.arrival}
+                        {alternative.departure} â†’ {alternative.arrival}
                       </p>
                       <p className="mt-1 truncate text-sm font-bold text-[#357179]">
-                        {alternative.trains.join(" · ") || "Bahnverbindung"}
+                        {alternative.trains.join(" Â· ") || "Bahnverbindung"}
                       </p>
                     </div>
                     <a
@@ -4633,12 +4647,12 @@ function TrainLegCard({
                       rel="noreferrer"
                       target="_blank"
                     >
-                      Öffnen
+                      Ã–ffnen
                     </a>
                   </div>
                   <p className="mt-2 text-sm font-semibold text-[#5b6f68]">
-                    {alternative.durationMinutes} Min. · {alternative.transfers === 0 ? "direkt" : `${alternative.transfers} Umstieg${alternative.transfers === 1 ? "" : "e"}`}
-                    {alternative.fromPlatform ? ` · ab Gleis ${alternative.fromPlatform}` : ""}
+                    {alternative.durationMinutes} Min. Â· {alternative.transfers === 0 ? "direkt" : `${alternative.transfers} Umstieg${alternative.transfers === 1 ? "" : "e"}`}
+                    {alternative.fromPlatform ? ` Â· ab Gleis ${alternative.fromPlatform}` : ""}
                   </p>
                 </div>
               ))}
@@ -4721,10 +4735,10 @@ function PlaceCard({ place }: { place: Place }) {
         </span>
         <div className="min-w-0">
           <h3 className="text-[16px] font-black leading-snug text-[#0e302e]">
-            {readableText(place.title)} {isTop && <span title="Must-see">⭐</span>}
+            {readableText(place.title)} {isTop && <span title="Must-see">â­</span>}
           </h3>
           <p className="mt-0.5 truncate text-[13px] font-semibold text-[#5b6f68]">
-            {readableText(place.location) || "Kreta"} · {readableText(place.region)}
+            {readableText(place.location) || "Kreta"} Â· {readableText(place.region)}
           </p>
         </div>
       </div>
@@ -4738,7 +4752,7 @@ function PlaceCard({ place }: { place: Place }) {
       <div className="mt-auto flex items-center justify-between pt-1">
         {rating !== null ? (
           <span className="text-sm font-black text-[#8a5b00]">
-            ★ {rating.toFixed(1).replace(".", ",")}
+            â˜… {rating.toFixed(1).replace(".", ",")}
             {ratingCount && <span className="font-bold text-[#789087]"> ({ratingCount})</span>}
           </span>
         ) : (
@@ -4750,7 +4764,7 @@ function PlaceCard({ place }: { place: Place }) {
           rel="noreferrer"
           target="_blank"
         >
-          📍 Maps
+          ðŸ“ Maps
         </a>
       </div>
     </article>
@@ -4772,10 +4786,10 @@ function RestaurantCard({ restaurant }: { restaurant: Restaurant }) {
         </span>
         <div className="min-w-0">
           <h3 className="text-[16px] font-black leading-snug text-[#0e302e]">
-            {readableText(restaurant.name)} {isTop && <span title="Empfehlung">⭐</span>}
+            {readableText(restaurant.name)} {isTop && <span title="Empfehlung">â­</span>}
           </h3>
           <p className="mt-0.5 truncate text-[13px] font-semibold text-[#5b6f68]">
-            {readableText(restaurant.place) || "Kreta"} · {readableText(restaurant.region)}
+            {readableText(restaurant.place) || "Kreta"} Â· {readableText(restaurant.region)}
           </p>
         </div>
       </div>
@@ -4784,14 +4798,14 @@ function RestaurantCard({ restaurant }: { restaurant: Restaurant }) {
       )}
       <div className="flex flex-wrap gap-1.5">
         <SoftPill>{cuisineShort}</SoftPill>
-        {veggieText.includes("vegan") && <SoftPill>🥗 Vegan</SoftPill>}
-        {restaurant.drive && <SoftPill>🚗 {readableText(restaurant.drive)}</SoftPill>}
+        {veggieText.includes("vegan") && <SoftPill>ðŸ¥— Vegan</SoftPill>}
+        {restaurant.drive && <SoftPill>ðŸš— {readableText(restaurant.drive)}</SoftPill>}
         {restaurant.price && <SoftPill>{readableText(restaurant.price)}</SoftPill>}
       </div>
       <div className="mt-auto flex items-center justify-between pt-1">
         {rating !== null ? (
           <span className="text-sm font-black text-[#8a5b00]">
-            ★ {rating.toFixed(1).replace(".", ",")}
+            â˜… {rating.toFixed(1).replace(".", ",")}
             {ratingCount && <span className="font-bold text-[#789087]"> ({ratingCount})</span>}
           </span>
         ) : (
@@ -4803,7 +4817,7 @@ function RestaurantCard({ restaurant }: { restaurant: Restaurant }) {
           rel="noreferrer"
           target="_blank"
         >
-          📍 Maps
+          ðŸ“ Maps
         </a>
       </div>
     </article>
@@ -4890,14 +4904,14 @@ function FilterLegend({ guideMode }: { guideMode: GuideMode }) {
   const items =
     guideMode === "restaurants"
       ? [
-          ["Empfehlung", "Must-see = sehr stark, Sehr gut = klare Empfehlung, Optional = guter Füller"],
-          ["Küche", "aus den Kategorien der beiden Restaurant-Blätter"],
+          ["Empfehlung", "Must-see = sehr stark, Sehr gut = klare Empfehlung, Optional = guter FÃ¼ller"],
+          ["KÃ¼che", "aus den Kategorien der beiden Restaurant-BlÃ¤tter"],
           ["Veggie", "aus Kategorien und Details der deutschen Tabelle"],
         ]
       : [
-          ["Kategorie", "aus dem Sehenswürdigkeiten-Blatt der neuen Excel-Datei"],
-          ["Empfehlung", "Must-see = sehr stark, Sehr gut = klare Empfehlung, Optional = guter Füller"],
-          ["Bereinigt", "Hotels, religiöse Orte, Shops, Gastronomie und Services werden hier ausgeblendet"],
+          ["Kategorie", "aus dem SehenswÃ¼rdigkeiten-Blatt der neuen Excel-Datei"],
+          ["Empfehlung", "Must-see = sehr stark, Sehr gut = klare Empfehlung, Optional = guter FÃ¼ller"],
+          ["Bereinigt", "Hotels, religiÃ¶se Orte, Shops, Gastronomie und Services werden hier ausgeblendet"],
         ];
 
   return (
@@ -4922,7 +4936,7 @@ function ResetFilterButton({ active, onClick }: { active: boolean; onClick: () =
       onClick={onClick}
       type="button"
     >
-      Zurücksetzen
+      ZurÃ¼cksetzen
     </button>
   );
 }
@@ -4952,7 +4966,7 @@ function TabButton({
 
 function SyncPill({ error, loading, sourceKind }: { error: boolean; loading: boolean; sourceKind: "supabase" | "fallback" }) {
   const offline = !loading && (error || sourceKind === "fallback");
-  const label = loading ? "Lädt…" : offline ? "Offline · neu laden" : "Synchron";
+  const label = loading ? "LÃ¤dtâ€¦" : offline ? "Offline Â· neu laden" : "Synchron";
   const dotClass = loading ? "bg-[#e7b53c] animate-pulse" : offline ? "bg-[#c2410c]" : "bg-[#1e7f4f]";
 
   return (
