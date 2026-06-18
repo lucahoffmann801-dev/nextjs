@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, FormEvent, PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import {
@@ -33,6 +34,8 @@ import type {
   RailLegLookup,
   RailStatusResult,
 } from "./lib/rail-live-types";
+import { routeWeatherAdjustment, weatherCodeEmoji, weatherCodeLabel } from "./lib/weather-domain";
+import type { WeatherPointRequest, WeatherPointSnapshot, WeatherResponse } from "./lib/weather-types";
 
 type View = "home" | "kosten" | "reise" | "routen" | "karte" | "guide" | "packen";
 type GuideMode = "restaurants" | "sights";
@@ -63,6 +66,7 @@ type RoutePoint = {
   arrivalMinutes?: number;
   reason: string;
   alternatives?: RoutePoint[];
+  weather?: WeatherPointSnapshot;
 };
 type PlannedRoute = {
   id: string;
@@ -78,6 +82,7 @@ type PlannedRoute = {
   stress: "entspannt" | "mittel" | "intensiv";
   mapsLinks: string[];
   createdAt: string;
+  weatherCheckedAt?: string;
 };
 type RailLegUiState = {
   status?: RailStatusResult;
@@ -90,7 +95,7 @@ type RailLegUiState = {
 type ToastState = {
   title: string;
   detail?: string;
-  tone?: "success" | "error";
+  tone?: "success" | "error" | "celebrate";
 };
 
 const views: { id: View; label: string }[] = [
@@ -111,6 +116,61 @@ const currency = new Intl.NumberFormat("de-DE", {
 
 function money(value: number) {
   return currency.format(value);
+}
+
+async function requestWeather(points: WeatherPointRequest[], date?: string, refresh = false) {
+  const response = await fetch("/api/weather", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ points, date, refresh }),
+  });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error ?? "Wetterdaten konnten nicht geladen werden.");
+  return result as WeatherResponse;
+}
+
+function timeFromIso(value: string | null | undefined) {
+  if (!value) return "–";
+  return value.match(/T(\d{2}:\d{2})/)?.[1] ?? value;
+}
+
+function tripProgress() {
+  const now = Date.now();
+  const start = new Date("2026-07-01T00:00:00+03:00").getTime();
+  const end = new Date("2026-07-10T00:00:00+03:00").getTime();
+  return Math.max(0, Math.min(100, Math.round(((now - start) / (end - start)) * 100)));
+}
+
+type TravelMoment = {
+  id: string;
+  kind: "flight" | "train";
+  label: string;
+  title: string;
+  detail: string;
+  at: Date;
+};
+
+function nextTravelMoment(flights: Flight[], trains: TrainLeg[]): TravelMoment | null {
+  const moments: TravelMoment[] = [
+    ...flights.map((flight) => ({
+      id: flight.id,
+      kind: "flight" as const,
+      label: flight.direction,
+      title: `${flight.number} · ${flight.from} → ${flight.to}`,
+      detail: `${flight.date} · ${flight.dep}`,
+      at: new Date(`${germanDateToIso(flight.date)}T${flight.dep}:00+02:00`),
+    })),
+    ...trains.map((train) => ({
+      id: train.id,
+      kind: "train" as const,
+      label: train.direction,
+      title: `${train.train} · ${train.from} → ${train.to}`,
+      detail: `${train.date} · ${train.dep} · Gleis ${train.depPlatform}`,
+      at: new Date(`${germanDateToIso(train.date)}T${train.dep}:00+02:00`),
+    })),
+  ].filter((moment) => !Number.isNaN(moment.at.getTime()));
+  const now = Date.now() - 30 * 60_000;
+  return moments.filter((moment) => moment.at.getTime() >= now).sort((a, b) => a.at.getTime() - b.at.getTime())[0] ?? null;
 }
 
 function classNames(...classes: Array<string | false | null | undefined>) {
@@ -958,6 +1018,8 @@ function buildSmartRoute({
   start,
   startTime,
   walkingLevel,
+  weatherByPoint,
+  weatherCheckedAt,
 }: {
   day: string;
   duration: RouteDurationId;
@@ -973,6 +1035,8 @@ function buildSmartRoute({
   start: RoutePoint;
   startTime: string;
   walkingLevel: WalkingLevelId;
+  weatherByPoint?: Map<string, WeatherPointSnapshot>;
+  weatherCheckedAt?: string;
 }) {
   const durationConfig = routeDurationOptions.find((option) => option.value === duration) ?? routeDurationOptions[1];
   const mealConfig = mealPlanOptions.find((option) => option.value === mealPlan) ?? mealPlanOptions[0];
@@ -982,13 +1046,16 @@ function buildSmartRoute({
   const pointCandidates = places
     .map(placeToRoutePoint)
     .filter((point): point is RoutePoint => Boolean(point))
+    .map((point) => ({ ...point, weather: weatherByPoint?.get(point.id) }))
     .filter((point) => point.id !== start.id && point.id !== end.id)
     .filter((point) => distanceKm(start, point) + distanceKm(point, end) <= routeRadius * 2.25)
     .filter((point) => matchesRouteInterest(point, interests))
     .filter((point) => walkingLevel !== "low" || walkingMinutesForPoint(point, walkingLevel) <= 38)
     .sort((a, b) => {
-      const aScore = priorityScore(a.priority) + (a.rating ?? 0) * 8 - distanceKm(start, a) * 0.25 - walkingMinutesForPoint(a, walkingLevel) * 0.08;
-      const bScore = priorityScore(b.priority) + (b.rating ?? 0) * 8 - distanceKm(start, b) * 0.25 - walkingMinutesForPoint(b, walkingLevel) * 0.08;
+      const aWeather = routeWeatherAdjustment(a.weather, a).score;
+      const bWeather = routeWeatherAdjustment(b.weather, b).score;
+      const aScore = priorityScore(a.priority) + (a.rating ?? 0) * 8 - distanceKm(start, a) * 0.25 - walkingMinutesForPoint(a, walkingLevel) * 0.08 + aWeather;
+      const bScore = priorityScore(b.priority) + (b.rating ?? 0) * 8 - distanceKm(start, b) * 0.25 - walkingMinutesForPoint(b, walkingLevel) * 0.08 + bWeather;
       return bScore - aScore;
     });
 
@@ -1000,7 +1067,9 @@ function buildSmartRoute({
     if (metrics.driveMinutes <= maxDriveMinutes && metrics.totalMinutes <= durationConfig.minutes + paceConfig.durationBuffer + (lowStress ? -15 : 45)) {
       picked.push({
         ...candidate,
-        reason: routeReason(candidate, interests),
+        reason: [routeReason(candidate, interests), routeWeatherAdjustment(candidate.weather, candidate).reason]
+          .filter(Boolean)
+          .join(" "),
       });
     }
   }
@@ -1009,17 +1078,21 @@ function buildSmartRoute({
   const restaurantCandidates = restaurants
     .map(restaurantToRoutePoint)
     .filter((point): point is RoutePoint => Boolean(point))
+    .map((point) => ({ ...point, weather: weatherByPoint?.get(point.id) }))
     .filter((point) => distanceToRoute(point, orderedPoiRoute) <= (lowStress ? 12 : 22))
     .sort((a, b) => {
-      const aScore = priorityScore(a.priority) + (a.rating ?? 0) * 9 - distanceToRoute(a, orderedPoiRoute) * 2;
-      const bScore = priorityScore(b.priority) + (b.rating ?? 0) * 9 - distanceToRoute(b, orderedPoiRoute) * 2;
+      const aScore = priorityScore(a.priority) + (a.rating ?? 0) * 9 - distanceToRoute(a, orderedPoiRoute) * 2 + routeWeatherAdjustment(a.weather, a).score;
+      const bScore = priorityScore(b.priority) + (b.rating ?? 0) * 9 - distanceToRoute(b, orderedPoiRoute) * 2 + routeWeatherAdjustment(b.weather, b).score;
       return bScore - aScore;
     });
 
   const meals = restaurantCandidates.slice(0, mealConfig.meals).map((restaurant, index) => ({
     ...restaurant,
     stayMinutes: mealConfig.restaurantMinutes,
-    reason: mealConfig.meals > 1 && index === 0 ? "Mittagspause nah an der Route." : "Essensstopp nah an der Route.",
+    reason: [
+      mealConfig.meals > 1 && index === 0 ? "Mittagspause nah an der Route." : "Essensstopp nah an der Route.",
+      routeWeatherAdjustment(restaurant.weather, restaurant).reason,
+    ].filter(Boolean).join(" "),
   }));
   const finalRoute = addAlternatives(orderRoutePoints(start, end, [...picked, ...meals]), pointCandidates, restaurantCandidates);
   const metrics = routeMetrics(finalRoute, walkingLevel);
@@ -1040,6 +1113,7 @@ function buildSmartRoute({
     stress,
     mapsLinks: googleMapsRouteLinks(finalRoute),
     createdAt: new Date().toISOString(),
+    weatherCheckedAt,
   } satisfies PlannedRoute;
 }
 
@@ -1171,6 +1245,10 @@ export default function Home() {
   const [daysLeft, setDaysLeft] = useState<number | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [expenseToDelete, setExpenseToDelete] = useState<ExpenseItem | null>(null);
+  const [hotelWeather, setHotelWeather] = useState<WeatherPointSnapshot | null>(null);
+  const [weatherCheckedAt, setWeatherCheckedAt] = useState("");
+  const [weatherLoading, setWeatherLoading] = useState(true);
+  const [weatherError, setWeatherError] = useState("");
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function showToast(title: string, detail?: string, tone: ToastState["tone"] = "success") {
@@ -1203,6 +1281,31 @@ export default function Home() {
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDaysLeft(daysUntilTrip()), 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  async function loadHotelWeather(refresh = false) {
+    setWeatherLoading(true);
+    setWeatherError("");
+    try {
+      const result = await requestWeather(
+        [{ id: hotelPoint.id, lat: hotelPoint.lat, lng: hotelPoint.lng }],
+        undefined,
+        refresh,
+      );
+      setHotelWeather(result.points[0] ?? null);
+      setWeatherCheckedAt(result.checkedAt);
+    } catch (weatherLoadError) {
+      setWeatherError(
+        weatherLoadError instanceof Error ? weatherLoadError.message : "Wetterdaten konnten nicht geladen werden.",
+      );
+    } finally {
+      setWeatherLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => void loadHotelWeather(), 0);
     return () => window.clearTimeout(timer);
   }, []);
 
@@ -1283,7 +1386,12 @@ export default function Home() {
       const state = await response.json();
       if (!response.ok) throw new Error(state.error ?? "Ausgabe konnte nicht gespeichert werden.");
       setAppState(state as TripState);
-      showToast("Gespeichert", `${money(input.amount)} · ${input.category} · ${input.paidBy} bezahlt`);
+      const settlement = input.splitMode?.toLowerCase() === "ausgleichszahlung";
+      showToast(
+        settlement ? "Ausgleich eingetragen" : "Gespeichert",
+        `${money(input.amount)} · ${input.category} · ${input.paidBy} bezahlt`,
+        settlement ? "celebrate" : "success",
+      );
       return true;
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Ausgabe konnte nicht gespeichert werden.");
@@ -1295,10 +1403,12 @@ export default function Home() {
   }
 
   async function togglePackItem(id: string, field: "lucaDone" | "janDone", value: boolean) {
-    setAppState((current) => ({
-      ...current,
-      packItems: current.packItems.map((item) => (item.id === id ? { ...item, [field]: value } : item)),
-    }));
+    const nextPackItems = appState.packItems.map((item) => (item.id === id ? { ...item, [field]: value } : item));
+    const complete = nextPackItems.length > 0 && nextPackItems.every((item) => item.lucaDone && item.janDone);
+    setAppState((current) => ({ ...current, packItems: nextPackItems }));
+    if (complete) {
+      showToast("Packliste komplett", "Luca und Jan haben alles abgehakt. Kreta kann kommen.", "celebrate");
+    }
     try {
       const response = await fetch(`/api/pack/${encodeURIComponent(id)}`, {
         method: "PATCH",
@@ -1354,8 +1464,10 @@ export default function Home() {
       const state = await response.json();
       if (!response.ok) throw new Error(state.error ?? "Route konnte nicht gespeichert werden.");
       setAppState(state as TripState);
+      showToast("Route gespeichert", `${route.stops.length} Stopps · ${formatKm(route.totalKm)}`, "celebrate");
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Route konnte nicht gespeichert werden.");
+      showToast("Backend-Speicherung fehlgeschlagen", "Die Route bleibt lokal auf diesem Gerät erhalten.", "error");
     } finally {
       setSaving(false);
     }
@@ -1394,7 +1506,14 @@ export default function Home() {
         </div>
       </header>
 
-      {view === "home" && <Hero daysLeft={daysLeft} onQuickExpense={() => setQuickExpenseOpen(true)} setView={setView} />}
+      {view === "home" && (
+        <Hero
+          daysLeft={daysLeft}
+          onQuickExpense={() => setQuickExpenseOpen(true)}
+          setView={setView}
+          weather={hotelWeather}
+        />
+      )}
 
       <div ref={contentRef} className="mx-auto max-w-6xl px-4 py-6 sm:py-8">
         {view === "home" && (
@@ -1402,13 +1521,19 @@ export default function Home() {
             dashboard={appState.dashboard}
             expenses={appState.expenses}
             flights={appState.flights}
+            hotelWeather={hotelWeather}
             onQuickExpense={() => setQuickExpenseOpen(true)}
+            onRefreshWeather={() => void loadHotelWeather(true)}
             placesCount={tourismPlaces.length}
             restaurantsCount={creteRestaurants.length}
             routes={cleanBackendRoutes}
             savedSmartRoutes={savedSmartRoutes}
             setGuideMode={setGuideMode}
             setView={setView}
+            trains={appState.trains}
+            weatherCheckedAt={weatherCheckedAt}
+            weatherError={weatherError}
+            weatherLoading={weatherLoading}
           />
         )}
         {view === "kosten" && (
@@ -1493,7 +1618,9 @@ export default function Home() {
             "toast-pop ios-toast fixed left-3 right-3 z-[90] mx-auto flex max-w-md items-start gap-3 rounded-[24px] border px-4 py-3 text-left shadow-[0_18px_46px_rgba(14,48,46,0.18)] md:left-1/2 md:right-auto md:w-[min(420px,calc(100%-32px))] md:-translate-x-1/2",
             toast.tone === "error"
               ? "border-[#f1c7bb] bg-[#fff3ee]/86 text-[#8c3219]"
-              : "border-white/70 bg-[#f8fffb]/84 text-[#0e302e]",
+              : toast.tone === "celebrate"
+                ? "celebration-toast border-[#ffe1a8] bg-[#fff9e8]/92 text-[#0e302e]"
+                : "border-white/70 bg-[#f8fffb]/84 text-[#0e302e]",
           )}
           role="status"
         >
@@ -1501,10 +1628,14 @@ export default function Home() {
             aria-hidden="true"
             className={classNames(
               "mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full text-base font-black",
-              toast.tone === "error" ? "bg-[#ffd5c8] text-[#8c3219]" : "bg-[#dff6ed] text-[#125f68]",
+              toast.tone === "error"
+                ? "bg-[#ffd5c8] text-[#8c3219]"
+                : toast.tone === "celebrate"
+                  ? "bg-[#ffe1a8] text-[#7a4b00]"
+                  : "bg-[#dff6ed] text-[#125f68]",
             )}
           >
-            {toast.tone === "error" ? "!" : "✓"}
+            {toast.tone === "error" ? "!" : toast.tone === "celebrate" ? "✦" : "✓"}
           </span>
           <span className="min-w-0 flex-1">
             <span className="block text-sm font-black leading-tight">{toast.title}</span>
@@ -1552,10 +1683,12 @@ function Hero({
   daysLeft,
   onQuickExpense,
   setView,
+  weather,
 }: {
   daysLeft: number | null;
   onQuickExpense: () => void;
   setView: (view: View) => void;
+  weather: WeatherPointSnapshot | null;
 }) {
   const countdown =
     daysLeft === null
@@ -1567,12 +1700,32 @@ function Hero({
         : daysLeft === 0
           ? "Heute geht's los"
           : "Ihr seid unterwegs";
+  const weatherCode = weather?.current?.weatherCode ?? weather?.day?.weatherCode;
+  const isDay = weather?.current?.isDay ?? true;
+  const windy = Math.max(weather?.current?.windSpeed ?? 0, weather?.current?.windGust ?? 0) >= 32;
+  const mood =
+    weatherCode != null && weatherCode >= 51
+      ? "rain"
+      : windy
+        ? "wind"
+        : isDay
+          ? "sun"
+          : "night";
 
   return (
-    <section className="relative overflow-hidden border-b border-[#c9d9d1]">
+    <section className={classNames("hero-mood relative overflow-hidden border-b border-[#c9d9d1]", `hero-mood-${mood}`)}>
       <div className="absolute inset-0">
-        <img alt="Balos Beach auf Kreta" className="h-full w-full object-cover" src={heroImage} />
-        <div className="absolute inset-0 bg-[linear-gradient(100deg,rgba(6,35,36,0.92),rgba(15,81,84,0.74)_52%,rgba(255,242,219,0.16))]" />
+        <Image
+          alt="Balos Beach auf Kreta"
+          className="object-cover"
+          fill
+          priority
+          sizes="100vw"
+          src={heroImage}
+        />
+        <div className="hero-mood-overlay absolute inset-0" />
+        <span aria-hidden="true" className="hero-orb hero-orb-one" />
+        <span aria-hidden="true" className="hero-orb hero-orb-two" />
       </div>
 
       <div className="relative mx-auto flex max-w-6xl flex-wrap items-end justify-between gap-4 px-4 py-7 text-white sm:py-9">
@@ -1588,6 +1741,12 @@ function Hero({
             <span className="inline-flex h-10 items-center rounded-full border border-white/35 bg-white/12 px-4 text-sm font-black backdrop-blur">
               {countdown}
             </span>
+            {weather?.current && (
+              <span className="inline-flex h-10 items-center gap-2 rounded-full border border-white/35 bg-white/12 px-4 text-sm font-black backdrop-blur">
+                {weatherCodeEmoji(weatherCode, isDay)}
+                {weather.current.temperature != null ? `${Math.round(weather.current.temperature)} °C` : weatherCodeLabel(weatherCode)}
+              </span>
+            )}
             <button
               className="inline-flex h-10 items-center rounded-full bg-[#ffe1a8] px-4 text-sm font-black text-[#0e302e] shadow-sm transition hover:bg-[#ffd585]"
               onClick={onQuickExpense}
@@ -1606,11 +1765,11 @@ function Hero({
           </div>
         </div>
         <button
-          className="hidden overflow-hidden rounded-[14px] border border-white/25 shadow-[0_18px_60px_rgba(0,0,0,0.25)] sm:block"
+          className="relative hidden h-36 w-28 overflow-hidden rounded-[14px] border border-white/25 shadow-[0_18px_60px_rgba(0,0,0,0.25)] sm:block"
           onClick={() => setView("guide")}
           type="button"
         >
-          <img alt="Jan und Luca auf Kreta" className="h-36 w-28 object-cover" src={janLucaImage} />
+          <Image alt="Jan und Luca auf Kreta" className="object-cover" fill sizes="112px" src={janLucaImage} />
         </button>
       </div>
     </section>
@@ -1621,24 +1780,36 @@ function HomeView({
   dashboard,
   expenses,
   flights,
+  hotelWeather,
   onQuickExpense,
+  onRefreshWeather,
   placesCount,
   restaurantsCount,
   routes,
   savedSmartRoutes,
   setGuideMode,
   setView,
+  trains,
+  weatherCheckedAt,
+  weatherError,
+  weatherLoading,
 }: {
   dashboard: DashboardState;
   expenses: ExpenseItem[];
   flights: Flight[];
+  hotelWeather: WeatherPointSnapshot | null;
   onQuickExpense: () => void;
+  onRefreshWeather: () => void;
   placesCount: number;
   restaurantsCount: number;
   routes: RoutePlan[];
   savedSmartRoutes: PlannedRoute[];
   setGuideMode: (mode: GuideMode) => void;
   setView: (view: View) => void;
+  trains: TrainLeg[];
+  weatherCheckedAt: string;
+  weatherError: string;
+  weatherLoading: boolean;
 }) {
   const outboundFlight = flights.find((flight) => stripDiacritics(normalizedText(flight.direction)).includes("hin")) ?? flights[0];
   const latestExpense = expenses[0];
@@ -1655,6 +1826,8 @@ function HomeView({
   const planMaps = todaySmart?.mapsLinks[0] ?? todayBackend?.maps ?? nextSmart?.mapsLinks[0] ?? null;
   const planStops = todaySmart?.stops.map((stop) => stop.title) ?? todayBackend?.stops ?? nextSmart?.stops.map((stop) => stop.title) ?? [];
   const planIsToday = Boolean(todaySmart || todayBackend);
+  const nextMoment = nextTravelMoment(flights, trains);
+  const progress = tripProgress();
 
   const settlementShort =
     dashboard.direction === "ausgeglichen"
@@ -1732,6 +1905,48 @@ function HomeView({
         <span className="text-xl font-black text-[#9bb0a7]">›</span>
       </button>
 
+      <WeatherCockpit
+        checkedAt={weatherCheckedAt}
+        error={weatherError}
+        loading={weatherLoading}
+        onRefresh={onRefreshWeather}
+        weather={hotelWeather}
+      />
+
+      <section className="ios-glass-card overflow-hidden rounded-[24px] p-4">
+        <div className="flex items-start justify-between gap-3">
+          <SectionTitle kicker="Reisefortschritt" title={progress > 0 ? `${progress} % Kreta-Modus` : "Die Reise rückt näher"} />
+          <span className="rounded-full bg-[#e7f4ee] px-3 py-1.5 text-xs font-black text-[#125f68]">
+            {trip.dates}
+          </span>
+        </div>
+        <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-[#dfe9e3]">
+          <div className="travel-progress-fill h-full rounded-full" style={{ width: `${progress}%` }} />
+        </div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.12em] text-[#789087]">Nächster Reisebaustein</p>
+            {nextMoment ? (
+              <>
+                <p className="mt-1 text-lg font-black text-[#0e302e]">
+                  {nextMoment.kind === "flight" ? "✈️" : "🚆"} {nextMoment.title}
+                </p>
+                <p className="mt-1 text-sm font-semibold text-[#5b6f68]">{nextMoment.detail}</p>
+              </>
+            ) : (
+              <p className="mt-1 text-sm font-semibold text-[#5b6f68]">Alle hinterlegten Reiseetappen sind abgeschlossen.</p>
+            )}
+          </div>
+          <button
+            className="min-h-11 rounded-[14px] bg-[#125f68] px-4 py-2.5 text-sm font-black text-white transition active:scale-[0.98] hover:bg-[#0e4d54]"
+            onClick={() => setView("reise")}
+            type="button"
+          >
+            Reise öffnen
+          </button>
+        </div>
+      </section>
+
       <section>
         <p className="px-1 text-xs font-black uppercase tracking-[0.14em] text-[#789087]">Schnellzugriff</p>
         <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
@@ -1790,7 +2005,15 @@ function HomeView({
           </button>
         </div>
         <div className="ios-glass-card overflow-hidden rounded-[24px]">
-          <img alt="Jan und Luca auf Kreta" className="h-40 w-full object-cover object-[50%_30%]" src={janLucaImage} />
+          <div className="relative h-40 w-full">
+            <Image
+              alt="Jan und Luca auf Kreta"
+              className="object-cover object-[50%_30%]"
+              fill
+              sizes="(min-width: 640px) 50vw, 100vw"
+              src={janLucaImage}
+            />
+          </div>
           <div className="p-3.5">
             <p className="text-sm font-black text-[#0e302e]">Jan &amp; Luca · {trip.dates}</p>
             <p className="mt-1 text-sm font-semibold leading-6 text-[#5b6f68]">
@@ -1866,6 +2089,117 @@ function CostsView({
           <FixedCostCard cost={cost} key={`${cost.area}-${cost.kind}`} />
         ))}
       </section>
+    </div>
+  );
+}
+
+function WeatherCockpit({
+  checkedAt,
+  error,
+  loading,
+  onRefresh,
+  weather,
+}: {
+  checkedAt: string;
+  error: string;
+  loading: boolean;
+  onRefresh: () => void;
+  weather: WeatherPointSnapshot | null;
+}) {
+  const current = weather?.current;
+  const day = weather?.day;
+  const code = current?.weatherCode ?? day?.weatherCode;
+  const checkedLabel = checkedAt
+    ? new Intl.DateTimeFormat("de-DE", { hour: "2-digit", minute: "2-digit" }).format(new Date(checkedAt))
+    : "";
+
+  return (
+    <section className="weather-cockpit ios-glass-dark overflow-hidden rounded-[24px] p-4 text-white">
+      <div className="relative z-10">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#9de7dc]">Heute in Frangokastello</p>
+            <h2 className="mt-1 text-2xl font-black">
+              {loading && !weather
+                ? "Wetter wird geladen…"
+                : `${weatherCodeEmoji(code, current?.isDay ?? true)} ${weatherCodeLabel(code)}`}
+            </h2>
+          </div>
+          <button
+            className="min-h-10 rounded-[12px] border border-white/22 bg-white/10 px-3 py-2 text-xs font-black text-white transition hover:bg-white/18 disabled:cursor-wait disabled:opacity-60"
+            disabled={loading}
+            onClick={onRefresh}
+            type="button"
+          >
+            {loading ? "Aktualisiert…" : "↻ Aktualisieren"}
+          </button>
+        </div>
+
+        {error ? (
+          <p className="mt-4 rounded-[14px] bg-[#ffdfd4]/14 px-3 py-3 text-sm font-bold text-[#ffd4c7]" role="alert">
+            {error}
+          </p>
+        ) : weather ? (
+          <>
+            <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <WeatherFact
+                label="Temperatur"
+                value={current?.temperature != null ? `${Math.round(current.temperature)} °C` : "–"}
+              />
+              <WeatherFact
+                label="Regen"
+                value={day?.precipitationProbabilityMax != null ? `${Math.round(day.precipitationProbabilityMax)} %` : "–"}
+              />
+              <WeatherFact label="UV max." value={day?.uvIndexMax != null ? day.uvIndexMax.toFixed(1) : "–"} />
+              <WeatherFact
+                label="Wind"
+                value={day?.windGustMax != null ? `${Math.round(day.windGustMax)} km/h` : "–"}
+              />
+              <WeatherFact
+                label="Wellen"
+                value={weather.marine?.waveHeightMax != null ? `${weather.marine.waveHeightMax.toFixed(1)} m` : "–"}
+              />
+              <WeatherFact label="Sonne auf" value={timeFromIso(day?.sunrise)} />
+              <WeatherFact label="Sonne unter" value={timeFromIso(day?.sunset)} />
+              <WeatherFact
+                label="Gefühlt"
+                value={current?.apparentTemperature != null ? `${Math.round(current.apparentTemperature)} °C` : "–"}
+              />
+            </div>
+            {weather.advisories.length > 0 && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {weather.advisories.map((advisory) => (
+                  <span
+                    className={classNames(
+                      "rounded-full px-3 py-1.5 text-xs font-black",
+                      advisory.level === "avoid"
+                        ? "bg-[#ffd5c8] text-[#74270f]"
+                        : "bg-[#fff0c9] text-[#684600]",
+                    )}
+                    key={advisory.kind}
+                    title={advisory.detail}
+                  >
+                    {advisory.title}
+                  </span>
+                ))}
+              </div>
+            )}
+            <p className="mt-4 text-xs font-semibold leading-5 text-white/62">
+              {checkedLabel ? `Stand ${checkedLabel} Uhr · ` : ""}
+              Open‑Meteo Modellprognose, keine amtliche Warnung oder Küstennavigation.
+            </p>
+          </>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+function WeatherFact({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[14px] border border-white/12 bg-white/8 px-3 py-2.5">
+      <p className="text-[10px] font-black uppercase tracking-[0.12em] text-white/58">{label}</p>
+      <p className="mt-1 text-base font-black tabular-nums text-white">{value}</p>
     </div>
   );
 }
@@ -2435,9 +2769,7 @@ function TravelView({ flights, trains }: { flights: Flight[]; trains: TrainLeg[]
   const inboundTrains = trains.filter((leg) => stripDiacritics(normalizedText(leg.direction)).includes("ruck"));
   const outboundFlight = flights.find((flight) => stripDiacritics(normalizedText(flight.direction)).includes("hin")) ?? flights[0];
   const inboundFlight = flights.find((flight) => stripDiacritics(normalizedText(flight.direction)).includes("ruck")) ?? flights[1];
-  const visibleTrains =
-    activeTab === "outbound-trains" ? outboundTrains : activeTab === "inbound-trains" ? inboundTrains : [];
-  const checkingVisible = visibleTrains.some((leg) => railState[leg.id]?.statusLoading);
+  const checkingAll = trains.some((leg) => railState[leg.id]?.statusLoading);
   const tabs = [
     { id: "outbound-trains", label: "Hin-Züge" },
     { id: "outbound-flight", label: "Hin-Flug" },
@@ -2513,21 +2845,31 @@ function TravelView({ flights, trains }: { flights: Flight[]; trains: TrainLeg[]
     }
   }
 
+  async function checkAllTrains() {
+    for (let index = 0; index < trains.length; index += 2) {
+      const batch = trains.slice(index, index + 2);
+      await Promise.allSettled(
+        batch.map((leg) => {
+          const returnLeg = stripDiacritics(normalizedText(leg.direction)).includes("ruck");
+          return checkStatus(leg, returnLeg ? inboundTrains : outboundTrains);
+        }),
+      );
+    }
+  }
+
   return (
     <div className="grid gap-5">
       <section className="ios-glass-card rounded-[24px] p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <SectionTitle kicker="Reise-Zentrale" title="Reise" />
-          {visibleTrains.length > 0 && (
+          {trains.length > 0 && (
             <button
               className="min-h-11 rounded-[14px] bg-[#125f68] px-4 py-2.5 text-sm font-black text-white transition active:scale-[0.98] hover:bg-[#0e4d54] disabled:cursor-wait disabled:opacity-60"
-              disabled={checkingVisible}
-              onClick={() => {
-                void Promise.allSettled(visibleTrains.map((leg) => checkStatus(leg, visibleTrains)));
-              }}
+              disabled={checkingAll}
+              onClick={() => void checkAllTrains()}
               type="button"
             >
-              {checkingVisible ? "Prüft Züge..." : "Alle sichtbaren Züge prüfen"}
+              {checkingAll ? "Prüft Bahnreise…" : "Alle Bahnabschnitte prüfen"}
             </button>
           )}
         </div>
@@ -2635,6 +2977,9 @@ function RoutesView({
   const [maxDriveMinutes, setMaxDriveMinutes] = useState(170);
   const [maxStops, setMaxStops] = useState(6);
   const [lowStress, setLowStress] = useState(true);
+  const [weatherEnabled, setWeatherEnabled] = useState(true);
+  const [weatherLoading, setWeatherLoading] = useState(false);
+  const [weatherNotice, setWeatherNotice] = useState("");
   const [plannedRoute, setPlannedRoute] = useState<PlannedRoute | null>(null);
   const startPoint = selectablePoints.find((point) => point.id === startId) ?? hotelPoint;
   const endPoint = selectablePoints.find((point) => point.id === endId) ?? hotelPoint;
@@ -2645,7 +2990,53 @@ function RoutesView({
     );
   }
 
-  function generateRoute() {
+  async function generateRoute() {
+    let weatherByPoint: Map<string, WeatherPointSnapshot> | undefined;
+    let checkedAt: string | undefined;
+    setWeatherNotice("");
+    if (weatherEnabled) {
+      setWeatherLoading(true);
+      const rawCandidates = [
+        startPoint,
+        endPoint,
+        ...places
+          .map(placeToRoutePoint)
+          .filter((point): point is RoutePoint => Boolean(point))
+          .filter((point) => matchesRouteInterest(point, interests)),
+        ...restaurants.map(restaurantToRoutePoint).filter((point): point is RoutePoint => Boolean(point)),
+      ]
+        .filter((point) => point.lat >= 34.5 && point.lat <= 36 && point.lng >= 23 && point.lng <= 27)
+        .filter((point) => distanceKm(startPoint, point) + distanceKm(point, endPoint) <= 430)
+        .sort(
+          (a, b) =>
+            priorityScore(b.priority) +
+            (b.rating ?? 0) * 8 -
+            distanceKm(startPoint, b) * 0.15 -
+            (priorityScore(a.priority) + (a.rating ?? 0) * 8 - distanceKm(startPoint, a) * 0.15),
+        );
+      const uniqueCandidates = Array.from(new Map(rawCandidates.map((point) => [point.id, point])).values()).slice(0, 30);
+      try {
+        const result = await requestWeather(
+          uniqueCandidates.map((point) => ({ id: point.id, lat: point.lat, lng: point.lng })),
+          day,
+        );
+        const available = result.points.filter((point) => point.available);
+        if (available.length > 0) {
+          weatherByPoint = new Map(available.map((point) => [point.id, point]));
+          checkedAt = result.checkedAt;
+          setWeatherNotice(`${available.length} Wetterpunkte für ${day} berücksichtigt.`);
+        } else {
+          setWeatherNotice("Für diesen Reisetag liegt noch keine belastbare Vorhersage vor. Route ohne Wettergewichtung berechnet.");
+        }
+      } catch (weatherLoadError) {
+        setWeatherNotice(
+          `${weatherLoadError instanceof Error ? weatherLoadError.message : "Wetter nicht verfügbar."} Route ohne Wettergewichtung berechnet.`,
+        );
+      } finally {
+        setWeatherLoading(false);
+      }
+    }
+
     const route = buildSmartRoute({
       day,
       duration,
@@ -2661,6 +3052,8 @@ function RoutesView({
       start: startPoint,
       startTime,
       walkingLevel,
+      weatherByPoint,
+      weatherCheckedAt: checkedAt,
     });
     setPlannedRoute(route);
   }
@@ -2680,10 +3073,11 @@ function RoutesView({
           <SectionTitle kicker="Smart Route planen" title="Tagesroute automatisch bauen" />
           <button
             className="rounded-[8px] bg-[#125f68] px-4 py-3 text-sm font-black text-white transition hover:bg-[#0e4d54]"
-            onClick={generateRoute}
+            disabled={weatherLoading}
+            onClick={() => void generateRoute()}
             type="button"
           >
-            Route berechnen
+            {weatherLoading ? "Wetter wird geprüft…" : "Route berechnen"}
           </button>
         </div>
 
@@ -2709,7 +3103,7 @@ function RoutesView({
           </div>
           <MultiPillGroup active={interests} label="Interessen" onToggle={toggleInterest} options={routeInterestOptions} />
           <FilterPillGroup label="Mahlzeiten" onChange={(value) => setMealPlan(value as MealPlanId)} options={mealPlanOptions} value={mealPlan} />
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <label className="grid gap-2 text-sm font-black text-[#0e302e]">
               Max. Fahrzeit
               <input
@@ -2734,7 +3128,20 @@ function RoutesView({
               <input checked={lowStress} onChange={(event) => setLowStress(event.target.checked)} type="checkbox" />
               Wenig Stress
             </label>
+            <label className="flex min-h-11 items-center gap-3 rounded-[8px] border border-[#cbdad2] px-3 text-sm font-black text-[#0e302e]">
+              <input
+                checked={weatherEnabled}
+                onChange={(event) => setWeatherEnabled(event.target.checked)}
+                type="checkbox"
+              />
+              Wetter berücksichtigen
+            </label>
           </div>
+          {weatherNotice && (
+            <p className="rounded-[14px] bg-[#eff6f2] px-3 py-2.5 text-sm font-bold leading-6 text-[#44635b]" role="status">
+              {weatherNotice}
+            </p>
+          )}
         </div>
       </section>
 
@@ -2750,12 +3157,19 @@ function RoutesView({
               Route speichern
             </button>
           </div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-5">
+          <div className="mt-4 grid gap-3 sm:grid-cols-3 xl:grid-cols-6">
             <Fact label="Dauer" value={formatDuration(plannedRoute.totalMinutes)} />
             <Fact label="Fahrt" value={formatDuration(plannedRoute.driveMinutes)} />
             <Fact label="Laufen" value={formatDuration(plannedRoute.walkMinutes)} />
             <Fact label="Distanz" value={formatKm(plannedRoute.totalKm)} />
             <Fact label="Stress" value={plannedRoute.stress} />
+            <Fact
+              label="Tageslicht"
+              value={(() => {
+                const dayWeather = plannedRoute.stops.find((stop) => stop.weather?.available)?.weather?.day;
+                return dayWeather ? `${timeFromIso(dayWeather.sunrise)}–${timeFromIso(dayWeather.sunset)}` : "ohne Prognose";
+              })()}
+            />
           </div>
           <ol className="mt-5 grid gap-3">
             {plannedRoute.stops.map((stop, index) => (
@@ -2772,6 +3186,15 @@ function RoutesView({
                       {stop.arrivalMinutes != null ? `${timeLabel(stop.arrivalMinutes)} · ` : ""}
                       {stop.category} · {stop.reason}
                     </p>
+                    {stop.weather?.available && stop.weather.day && (
+                      <p className="mt-2 text-xs font-black text-[#357179]">
+                        {weatherCodeEmoji(stop.weather.day.weatherCode)} {weatherCodeLabel(stop.weather.day.weatherCode)}
+                        {stop.weather.day.temperatureMax != null ? ` · bis ${Math.round(stop.weather.day.temperatureMax)} °C` : ""}
+                        {stop.weather.day.precipitationProbabilityMax != null
+                          ? ` · ${Math.round(stop.weather.day.precipitationProbabilityMax)} % Regen`
+                          : ""}
+                      </p>
+                    )}
                     {stop.alternatives && stop.alternatives.length > 0 && (
                       <div className="mt-3 flex flex-wrap gap-2">
                         {stop.alternatives.map((alternative) => (
@@ -2804,6 +3227,15 @@ function RoutesView({
               </a>
             ))}
           </div>
+          {plannedRoute.weatherCheckedAt && (
+            <p className="mt-3 text-xs font-semibold text-[#789087]">
+              Wetterstand:{" "}
+              {new Intl.DateTimeFormat("de-DE", { dateStyle: "short", timeStyle: "short" }).format(
+                new Date(plannedRoute.weatherCheckedAt),
+              )}
+              . Modellprognose von Open‑Meteo.
+            </p>
+          )}
         </section>
       )}
 
@@ -3036,12 +3468,17 @@ function MapView({
           const routePoints = (route as PlannedRoute).stops;
           const latLngs = routePoints.map((point) => [point.lat, point.lng] as [number, number]);
           if (latLngs.length > 1) {
-            L.polyline(latLngs, { color: "#125f68", opacity: 0.72, weight: 4 }).addTo(map);
+            L.polyline(latLngs, {
+              className: "route-draw-line",
+              color: "#125f68",
+              opacity: 0.78,
+              weight: 4,
+            }).addTo(map);
             routePoints.forEach((point, index) => {
               L.marker([point.lat, point.lng], {
                 icon: L.divIcon({
                   className: "",
-                  html: `<span style="display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:8px;background:#125f68;color:white;font-size:12px;font-weight:900">${index + 1}</span>`,
+                  html: `<span class="route-step-marker${index === 0 ? " route-step-active" : ""}">${index + 1}</span>`,
                   iconAnchor: [12, 12],
                 }),
               }).addTo(map);
@@ -3396,7 +3833,12 @@ function PackView({
 
   return (
     <div className="grid gap-5">
-      <section className="rounded-[14px] border border-[#d7e3dc] bg-white p-4 shadow-sm">
+      <section
+        className={classNames(
+          "rounded-[14px] border border-[#d7e3dc] bg-white p-4 shadow-sm",
+          progress === 100 && "pack-complete",
+        )}
+      >
         <div className="flex items-center justify-between">
           <SectionTitle kicker="Packliste" title={`${doneChecks}/${totalChecks} Haken gesetzt`} />
           <p className="text-sm font-black tabular-nums text-[#125f68]">{progress} %</p>
@@ -3630,9 +4072,9 @@ function bahnConnectionUrl(leg: TrainLeg) {
 
 function VehicleImage({ alt, src }: { alt: string; src: string }) {
   return (
-    <div className="flex aspect-[16/5] w-full items-center justify-center overflow-hidden rounded-[8px] border border-[#d7e3dc] bg-[#f7faf8]">
+    <div className="relative flex aspect-[16/5] w-full items-center justify-center overflow-hidden rounded-[8px] border border-[#d7e3dc] bg-[#f7faf8]">
       {src ? (
-        <img alt={alt} className="h-full w-full object-contain p-2" src={src} />
+        <Image alt={alt} className="object-contain p-2" fill sizes="(min-width: 1024px) 50vw, 100vw" src={src} />
       ) : (
         <span className="text-sm font-black text-[#789087]">Kein Fahrzeugbild</span>
       )}
@@ -3640,8 +4082,24 @@ function VehicleImage({ alt, src }: { alt: string; src: string }) {
   );
 }
 
+function flightStatusLinks(flight: Flight) {
+  const airportLinks = [
+    `${flight.from} ${flight.to}`.includes("NUE")
+      ? { label: "Nürnberg Airport", href: "https://www.airport-nuernberg.de/en/flights" }
+      : null,
+    `${flight.from} ${flight.to}`.includes("CHQ")
+      ? { label: "Chania Airport", href: "https://www.chq-airport.gr/en/flight-list" }
+      : null,
+  ].filter((item): item is { label: string; href: string } => Boolean(item));
+  return [
+    { label: "Ryanair Updates", href: "https://www.ryanair.com/gb/en/lp/travel-updates" },
+    ...airportLinks,
+  ];
+}
+
 function FlightCard({ flight }: { flight: Flight }) {
   const image = flightVehicleImage(flight);
+  const statusLinks = flightStatusLinks(flight);
 
   return (
     <article className="rounded-[8px] border border-[#d7e3dc] bg-white p-4 shadow-sm">
@@ -3661,7 +4119,7 @@ function FlightCard({ flight }: { flight: Flight }) {
         <Fact label="Airline" value={flight.airline} />
         <Fact label="Flugzeug" value={flight.aircraft || "Boeing 737-800"} />
         <Fact label="Buchung" value={flight.booking} />
-        <Fact label="Status" value="Direktflug · manuell prüfen" />
+        <Fact label="Status" value="Offizielle Live-Seiten" />
       </div>
       <div className="mt-4 flex flex-wrap gap-2">
         <a
@@ -3672,14 +4130,17 @@ function FlightCard({ flight }: { flight: Flight }) {
         >
           Buchung öffnen
         </a>
-        <a
-          className="rounded-[8px] bg-[#e7f4ee] px-4 py-3 text-sm font-black text-[#125f68] transition hover:bg-[#dcebe3]"
-          href={`https://www.google.com/search?q=${encodeURIComponent(`${flight.number} ${flight.date} flight status`)}`}
-          rel="noreferrer"
-          target="_blank"
-        >
-          Status prüfen
-        </a>
+        {statusLinks.map((link) => (
+          <a
+            className="rounded-[8px] bg-[#e7f4ee] px-4 py-3 text-sm font-black text-[#125f68] transition hover:bg-[#dcebe3]"
+            href={link.href}
+            key={link.href}
+            rel="noreferrer"
+            target="_blank"
+          >
+            {link.label}
+          </a>
+        ))}
       </div>
     </article>
   );
