@@ -3153,7 +3153,7 @@ function RoutesView({
   }
 
   return (
-    <div className="grid gap-5">
+    <div className="grid gap-5 overflow-x-clip">
       <section className="rounded-[8px] border border-[#d7e3dc] bg-white p-4 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <SectionTitle kicker="Smart Route planen" title="Tagesroute automatisch bauen" />
@@ -3173,7 +3173,7 @@ function RoutesView({
             <label className="grid gap-2">
               <span className="text-xs font-black uppercase tracking-[0.12em] text-[#789087]">Start-Uhrzeit</span>
               <input
-                className="h-11 rounded-[8px] border border-[#cbdad2] bg-white px-3 text-sm font-bold text-[#0e302e] outline-none transition focus:border-[#125f68]"
+                className="h-11 w-full min-w-0 rounded-[8px] border border-[#cbdad2] bg-white px-3 text-sm font-bold text-[#0e302e] outline-none transition focus:border-[#125f68]"
                 onChange={(event) => setStartTime(event.target.value)}
                 type="time"
                 value={startTime}
@@ -3193,7 +3193,7 @@ function RoutesView({
             <label className="grid gap-2 text-sm font-black text-[#0e302e]">
               Max. Fahrzeit
               <input
-                className="h-11 rounded-[8px] border border-[#cbdad2] px-3 text-sm outline-none focus:border-[#125f68]"
+                className="h-11 w-full min-w-0 rounded-[8px] border border-[#cbdad2] px-3 text-sm outline-none focus:border-[#125f68]"
                 min={45}
                 onChange={(event) => setMaxDriveMinutes(Number(event.target.value))}
                 type="number"
@@ -3203,7 +3203,7 @@ function RoutesView({
             <label className="grid gap-2 text-sm font-black text-[#0e302e]">
               Max. Stopps
               <input
-                className="h-11 rounded-[8px] border border-[#cbdad2] px-3 text-sm outline-none focus:border-[#125f68]"
+                className="h-11 w-full min-w-0 rounded-[8px] border border-[#cbdad2] px-3 text-sm outline-none focus:border-[#125f68]"
                 min={2}
                 onChange={(event) => setMaxStops(Number(event.target.value))}
                 type="number"
@@ -3362,7 +3362,7 @@ function RoutePointSelect({
     <label className="grid gap-2">
       <span className="text-xs font-black uppercase tracking-[0.12em] text-[#789087]">{label}</span>
       <select
-        className="h-11 rounded-[8px] border border-[#cbdad2] bg-white px-3 text-sm font-bold text-[#0e302e] outline-none transition focus:border-[#125f68]"
+        className="h-11 w-full min-w-0 rounded-[8px] border border-[#cbdad2] bg-white px-3 text-sm font-bold text-[#0e302e] outline-none transition focus:border-[#125f68]"
         onChange={(event) => onChange(event.target.value)}
         value={value}
       >
@@ -3834,7 +3834,7 @@ function GuideView({
   };
 
   return (
-    <div className="grid gap-5">
+    <div className="grid gap-5 overflow-x-clip">
       <section className="flex flex-wrap items-center justify-between gap-3">
         <SectionTitle kicker="Guide" title={`${visibleCount}/${activeItems.length} ${activeLabel}`} />
         <div className="grid w-full grid-cols-2 rounded-[8px] border border-[#d7e3dc] bg-white p-1 shadow-sm sm:w-auto">
@@ -3849,7 +3849,7 @@ function GuideView({
 
       <section className="grid gap-3 rounded-[8px] border border-[#d7e3dc] bg-white p-4 shadow-sm">
         <input
-          className="h-11 rounded-[8px] border border-[#cbdad2] bg-white px-3 text-sm font-bold text-[#0e302e] outline-none transition focus:border-[#125f68]"
+          className="h-11 w-full min-w-0 rounded-[8px] border border-[#cbdad2] bg-white px-3 text-sm font-bold text-[#0e302e] outline-none transition focus:border-[#125f68]"
           onChange={(event) => setQuery(event.target.value)}
           placeholder={
             guideMode === "restaurants"
@@ -4959,7 +4959,7 @@ function TabButton({
   return (
     <button
       className={classNames(
-        "h-9 rounded-[8px] px-3 text-sm font-black transition",
+        "h-9 min-w-0 truncate rounded-[8px] px-2 text-[13px] font-black transition sm:px-3 sm:text-sm",
         active ? "bg-[#125f68] text-white shadow-sm" : "text-[#42655d] hover:bg-[#e6eee9]",
       )}
       onClick={onClick}
