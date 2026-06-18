@@ -36,8 +36,9 @@ import type {
 } from "./lib/rail-live-types";
 import { routeWeatherAdjustment, weatherCodeEmoji, weatherCodeLabel } from "./lib/weather-domain";
 import type { WeatherPointRequest, WeatherPointSnapshot, WeatherResponse } from "./lib/weather-types";
+import MiniGamesView from "./components/mini-games-view";
 
-type View = "home" | "kosten" | "reise" | "routen" | "karte" | "guide" | "packen";
+type View = "home" | "kosten" | "reise" | "routen" | "karte" | "guide" | "packen" | "spiele";
 type GuideMode = "restaurants" | "sights";
 type PackItem = (typeof fallbackPackItems)[number] & {
   lucaDone?: boolean;
@@ -1303,7 +1304,6 @@ function measureSafeAreaInsets() {
     "inset:0 auto auto 0",
     "padding-top:env(safe-area-inset-top)",
     "padding-right:env(safe-area-inset-right)",
-    "padding-bottom:env(safe-area-inset-bottom)",
     "padding-left:env(safe-area-inset-left)",
   ].join(";");
   document.body.appendChild(probe);
@@ -1313,7 +1313,6 @@ function measureSafeAreaInsets() {
   const insets = {
     top: value("paddingTop", 64),
     right: value("paddingRight", 64),
-    bottom: value("paddingBottom", 48),
     left: value("paddingLeft", 64),
   };
   probe.remove();
@@ -1441,30 +1440,30 @@ export default function Home() {
     let keyboardSession = false;
     let animationFrame = 0;
     let safeAreaFrozen = false;
+    let stableShellHeight = Math.max(window.innerHeight, root.clientHeight, vv?.height ?? 0);
     const timers = new Set<number>();
     const freezeSafeArea = () => {
       if (!ios || safeAreaFrozen) return;
       const insets = measureSafeAreaInsets();
       root.style.setProperty("--ios-safe-top", `${insets.top}px`);
       root.style.setProperty("--ios-safe-right", `${insets.right}px`);
-      root.style.setProperty("--ios-safe-bottom", `${insets.bottom}px`);
       root.style.setProperty("--ios-safe-left", `${insets.left}px`);
       safeAreaFrozen = true;
     };
-    const updateManualShell = () => {
+    const applyManualShellHeight = () => {
       if (!root.classList.contains("ios-manual-shell")) return;
-      root.style.setProperty("--ios-shell-height", `${window.innerHeight}px`);
+      root.style.setProperty("--ios-shell-height", `${Math.round(stableShellHeight)}px`);
     };
     const enableManualShell = () => {
       if (!ios) return;
       if (root.classList.contains("ios-manual-shell")) {
-        updateManualShell();
+        applyManualShellHeight();
         return;
       }
       freezeSafeArea();
       const previousScrollTop = document.scrollingElement?.scrollTop ?? window.scrollY;
       root.classList.add("ios-manual-shell");
-      updateManualShell();
+      applyManualShellHeight();
       window.requestAnimationFrame(() => {
         const scrollRegion = document.querySelector<HTMLElement>(".app-scroll-region");
         if (scrollRegion) scrollRegion.scrollTop = previousScrollTop;
@@ -1472,7 +1471,11 @@ export default function Home() {
     };
     const keyboardIsOpen = () => {
       if (!vv) return isKeyboardField(document.activeElement);
-      return window.innerHeight - vv.height > 120;
+      return stableShellHeight - vv.height > 120;
+    };
+    const rememberStableShellHeight = () => {
+      if (keyboardIsOpen()) return;
+      applyManualShellHeight();
     };
     const clearTimers = () => {
       timers.forEach((timer) => window.clearTimeout(timer));
@@ -1485,7 +1488,8 @@ export default function Home() {
           timers.delete(timer);
           if (!keyboardIsOpen()) {
             refreshRootViewport();
-            updateManualShell();
+            rememberStableShellHeight();
+            applyManualShellHeight();
           }
         }, delay);
         timers.add(timer);
@@ -1503,7 +1507,8 @@ export default function Home() {
           enableManualShell();
           recoverViewport();
         }
-        updateManualShell();
+        if (!open) rememberStableShellHeight();
+        applyManualShellHeight();
       });
     };
 
@@ -1527,6 +1532,16 @@ export default function Home() {
     const onVisibilityChange = () => {
       if (document.visibilityState === "visible") syncViewport();
     };
+    const onOrientationChange = () => {
+      const timer = window.setTimeout(() => {
+        timers.delete(timer);
+        if (keyboardIsOpen()) return;
+        stableShellHeight = Math.max(window.innerHeight, vv?.height ?? 0);
+        applyManualShellHeight();
+        syncViewport();
+      }, 320);
+      timers.add(timer);
+    };
 
     freezeSafeArea();
     if (standalone) enableManualShell();
@@ -1535,9 +1550,10 @@ export default function Home() {
     document.addEventListener("visibilitychange", onVisibilityChange);
     window.addEventListener("pageshow", syncViewport);
     window.addEventListener("resize", syncViewport);
-    window.addEventListener("orientationchange", updateManualShell);
+    window.addEventListener("orientationchange", onOrientationChange);
     vv?.addEventListener("resize", syncViewport);
-    updateManualShell();
+    vv?.addEventListener("scroll", syncViewport);
+    applyManualShellHeight();
     return () => {
       clearTimers();
       window.cancelAnimationFrame(animationFrame);
@@ -1546,13 +1562,13 @@ export default function Home() {
       document.removeEventListener("visibilitychange", onVisibilityChange);
       window.removeEventListener("pageshow", syncViewport);
       window.removeEventListener("resize", syncViewport);
-      window.removeEventListener("orientationchange", updateManualShell);
+      window.removeEventListener("orientationchange", onOrientationChange);
       vv?.removeEventListener("resize", syncViewport);
+      vv?.removeEventListener("scroll", syncViewport);
       root.classList.remove("ios-manual-shell", "kb-open");
       root.style.removeProperty("--ios-shell-height");
       root.style.removeProperty("--ios-safe-top");
       root.style.removeProperty("--ios-safe-right");
-      root.style.removeProperty("--ios-safe-bottom");
       root.style.removeProperty("--ios-safe-left");
     };
   }, []);
@@ -1863,6 +1879,7 @@ export default function Home() {
           {view === "packen" && (
             <PackView onTogglePack={togglePackItem} packItems={appState.packItems} />
           )}
+          {view === "spiele" && <MiniGamesView onBack={() => setView("home")} />}
           </div>
 
           <footer className="mt-8 border-t border-[#d7e3dc] pt-5 text-sm text-[#5b6f68]">
@@ -1942,7 +1959,7 @@ export default function Home() {
       )}
 
       <QuickExpenseLauncher
-        hidden={modalOpen || Boolean(toast) || view === "kosten"}
+        hidden={modalOpen || Boolean(toast) || view === "kosten" || view === "spiele"}
         onClick={() => setQuickExpenseOpen(true)}
         saving={saving}
       />
@@ -2170,6 +2187,7 @@ function HomeView({
       action: () => setView("reise"),
     },
     { emoji: "💶", label: "Kosten & Ausgleich", sub: settlementShort, action: () => setView("kosten") },
+    { emoji: "🐐", label: "Mini Games", sub: "Kri-Kri Blitz", action: () => setView("spiele") },
   ];
 
   return (

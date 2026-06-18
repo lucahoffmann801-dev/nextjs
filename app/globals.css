@@ -7,6 +7,8 @@
   --mobile-floating-gap: 14px;
   --mobile-bottom-space: calc(var(--mobile-nav-height) + max(20px, env(safe-area-inset-bottom)));
   --ios-top-space: calc(18px + env(safe-area-inset-top));
+  --ios-nav-safe-space: 28px;
+  --ios-nav-total-height: calc(var(--mobile-nav-height) + var(--ios-nav-safe-space));
 }
 
 @theme inline {
@@ -163,7 +165,7 @@ img {
   html.ios-manual-shell .app-shell {
     position: relative;
     display: grid;
-    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-rows: auto minmax(0, 1fr) var(--ios-nav-total-height);
     height: var(--ios-shell-height, 100svh);
     min-height: 0;
     padding-bottom: 0;
@@ -187,11 +189,12 @@ img {
     position: relative !important;
     inset: auto !important;
     align-self: end;
-    height: calc(var(--mobile-nav-height) + var(--ios-safe-bottom, 0px));
-    block-size: calc(var(--mobile-nav-height) + var(--ios-safe-bottom, 0px));
-    min-height: calc(var(--mobile-nav-height) + var(--ios-safe-bottom, 0px));
-    max-height: calc(var(--mobile-nav-height) + var(--ios-safe-bottom, 0px));
-    padding-bottom: max(8px, var(--ios-safe-bottom, 0px));
+    height: var(--ios-nav-total-height);
+    block-size: var(--ios-nav-total-height);
+    min-height: var(--ios-nav-total-height);
+    max-height: var(--ios-nav-total-height);
+    flex: 0 0 var(--ios-nav-total-height);
+    padding-bottom: var(--ios-nav-safe-space);
     padding-left: max(16px, var(--ios-safe-left, 0px));
     padding-right: max(16px, var(--ios-safe-right, 0px));
   }
@@ -199,7 +202,7 @@ img {
   html.ios-manual-shell .quick-fab {
     position: absolute !important;
     bottom: calc(
-      var(--mobile-nav-height) + var(--ios-safe-bottom, 0px) + var(--mobile-floating-gap)
+      var(--ios-nav-total-height) + var(--mobile-floating-gap)
     );
     right: max(16px, var(--ios-safe-right, 0px));
   }
@@ -207,7 +210,7 @@ img {
   html.ios-manual-shell .ios-toast {
     position: absolute !important;
     bottom: calc(
-      var(--mobile-nav-height) + var(--ios-safe-bottom, 0px) + var(--mobile-floating-gap)
+      var(--ios-nav-total-height) + var(--mobile-floating-gap)
     );
   }
 
@@ -217,7 +220,7 @@ img {
 
   html.ios-manual-shell .quick-sheet-panel,
   html.ios-manual-shell .ios-alert-panel {
-    padding-bottom: calc(18px + var(--ios-safe-bottom, 0px));
+    padding-bottom: calc(18px + var(--ios-nav-safe-space));
   }
 }
 
