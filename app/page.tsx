@@ -4039,7 +4039,7 @@ function BalancePanel({
       <h3 className="mt-3 text-4xl font-black">{dashboard.settlementText}</h3>
       <p className="mt-2 text-6xl font-black leading-none">{money(dashboard.settlementAmount)}</p>
       <div className="mt-5 rounded-[18px] bg-white/10 p-4">
-        <div className="flex items-center justify-between gap-3">
+        <div>
           <div>
             <div className="flex items-center gap-2">
               <p className="font-bold text-[#b8f4eb]">Wofür wurde Geld ausgegeben?</p>
@@ -4050,14 +4050,14 @@ function BalancePanel({
             </div>
             <p className="mt-1 text-3xl font-black tabular-nums">{money(activeTotal)}</p>
           </div>
-          <div className="flex gap-1">
+          <div className="mt-3 grid grid-cols-3 gap-1 rounded-full bg-black/20 p-1">
               {(["all", "fixed", "trip"] as const).map((mode) => (
                 <button
                   className={classNames(
-                    "rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] transition",
+                    "rounded-full px-2 py-1.5 text-[11px] font-black uppercase tracking-[0.06em] transition active:scale-[0.97]",
                     chartMode === mode
-                      ? "bg-[#9fe0d5] text-[#0d3535]"
-                      : "bg-white/10 text-white/65 hover:bg-white/18"
+                      ? "bg-[#9fe0d5] text-[#0d3535] shadow-[0_2px_8px_rgba(0,0,0,0.18)]"
+                      : "text-white/70 hover:text-white"
                   )}
                   key={mode}
                   onClick={() => setChartMode(mode)}
