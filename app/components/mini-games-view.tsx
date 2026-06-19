@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type GameId = "krikri" | "trivia" | "distance" | "chaos";
+type GameId = "krikri" | "trivia" | "distance" | "chaos" | "mindmatch";
 type Player = "Jan" | "Luca";
 type AppScreen = "lobby" | GameId;
 
@@ -895,6 +895,319 @@ function DistanceGame({ onBack }: { onBack: () => void }) {
   );
 }
 
+// ─── MIND MATCH ──────────────────────────────────────────────────────────────
+
+interface MMQuestion {
+  text: string;
+  a: string;
+  b: string;
+  emoji: string;
+}
+
+const MM_QUESTIONS: MMQuestion[] = [
+  // Kreta-Vorlieben
+  { text: "Was ist besser?", a: "Frappé", b: "Raki", emoji: "☕" },
+  { text: "Lieber an die…", a: "🏖️ Strand", b: "⛰️ Berge", emoji: "🌊" },
+  { text: "Urlaubs-Modus?", a: "🦥 Liegen & Dösen", b: "🦁 Alles erkunden", emoji: "😎" },
+  { text: "Abendessen wann?", a: "19 Uhr — Hunger hat Grenzen", b: "21+ Uhr — so macht man das hier", emoji: "🍽️" },
+  { text: "Was ist kretischer?", a: "Dakos", b: "Gyros", emoji: "🫒" },
+  { text: "Erster Griff nach der Landung?", a: "💧 Wasser", b: "🍺 Bier", emoji: "✈️" },
+  { text: "Oktopus essen?", a: "Ja, sofort", b: "Nein, danke", emoji: "🐙" },
+  { text: "Wandern ohne Handy?", a: "Ja gerne, endlich", b: "Nein, unmöglich", emoji: "🥾" },
+  { text: "Bestes Kreta-Tier?", a: "🐐 Kri-Kri", b: "🐢 Meeresschildkröte", emoji: "🦎" },
+  { text: "Knossos oder Strand?", a: "🏛️ Knossos", b: "🏖️ Strand", emoji: "🗺️" },
+  { text: "Abends am Meer?", a: "🌅 Sonnenuntergang gucken", b: "🍷 Wein trinken", emoji: "🌙" },
+  { text: "Urlaubslektüre?", a: "📖 Buch mitgenommen", b: "📱 Reels gucken reicht", emoji: "🌴" },
+  { text: "Souvenirs kaufen?", a: "Ja, für alle", b: "Nein, Fotos sind Erinnerung genug", emoji: "🛍️" },
+  { text: "Pool oder Meer?", a: "🏊 Pool", b: "🌊 Meer", emoji: "💦" },
+  // Jan & Luca über sich gegenseitig
+  { text: "Wer schläft morgen länger?", a: "Jan", b: "Luca", emoji: "😴" },
+  { text: "Wer navigiert besser?", a: "Jan", b: "Luca", emoji: "🧭" },
+  { text: "Wer isst mutiger?", a: "Jan", b: "Luca", emoji: "🐟" },
+  { text: "Wer macht mehr Fotos?", a: "Jan", b: "Luca", emoji: "📸" },
+  { text: "Wer würde zuerst bei 40°C wandern gehen?", a: "Jan", b: "Luca", emoji: "🥵" },
+  { text: "Wer käme eher ohne WLAN aus?", a: "Jan", b: "Luca", emoji: "📵" },
+  { text: "Wer lacht zuerst wenn der andere stürzt?", a: "Jan", b: "Luca", emoji: "🤣" },
+  { text: "Wer spricht mehr mit Einheimischen?", a: "Jan", b: "Luca", emoji: "💬" },
+  { text: "Wer würde lieber als Einheimischer auf Kreta leben?", a: "Jan", b: "Luca", emoji: "🏡" },
+  { text: "Wer kauft das überflüssigste Souvenir?", a: "Jan", b: "Luca", emoji: "🪄" },
+  { text: "Wer dreht am Ende die Reise-Playlist?", a: "Jan", b: "Luca", emoji: "🎵" },
+  { text: "Wer ist der unfreiwillige Komiker der Reise?", a: "Jan", b: "Luca", emoji: "🎭" },
+  // Tiefe Fragen (zum Schmunzeln)
+  { text: "Besser: Zeitreise zu den Minoern oder Unterwasserpalast entdecken?", a: "⏳ Minoer", b: "🌊 Unterwasserpalast", emoji: "🏛️" },
+  { text: "Welche Gefahr ist auf Kreta realer?", a: "🦟 Mücken", b: "🌞 Sonnenstich", emoji: "⚠️" },
+  { text: "Das ehrlichere Reise-Fazit nach Tag 1?", a: "„Hier bleib ich für immer"", b: "„Schön, aber wann ist Frühstück?"", emoji: "🌅" },
+  { text: "Wenn Jan ein Kreta-Tier wäre, wäre er…", a: "🐐 Kri-Kri (eigenständig, wählerisch)", b: "🦎 Eidechse (ruhig, beobachtend)", emoji: "🤔" },
+  { text: "Wenn Luca ein Kreta-Gericht wäre, wäre er…", a: "🍢 Souvlaki (direkt, immer gut)", b: "🥗 Dakos (komplex, regional)", emoji: "🤔" },
+  { text: "Bester Kreta-Moment?", a: "🤫 Stille Sekunde am Meer", b: "🎉 Gemeinsam lachen über was Dummes", emoji: "✨" },
+  { text: "Das Ende der Reise bringt vor allem…", a: "😌 Erholung (endlich)", b: "😢 Wehmut (schon vorbei)", emoji: "🏠" },
+  { text: "Kreta-Philosophie?", a: "„Siga siga" – langsam, langsam", b: "„Noch ein Ort, bevor es dunkel wird"", emoji: "🐌" },
+  { text: "Die ehrlichste Urlaubskategorie?", a: "🍽️ Ich esse mich durch", b: "😴 Ich schlafe mich durch", emoji: "😇" },
+  { text: "Wer von beiden ist Kreta?", a: "Jan — ruhig, beständig, tief", b: "Luca — lebendig, warm, überraschend", emoji: "🏝️" },
+];
+
+const MM_ROUNDS = 10;
+const MM_TIMER = 12; // seconds to tap
+
+interface MMState {
+  round: number;
+  questions: number[];
+  phase: "tapping" | "reveal" | "done";
+  taps: Record<string, "a" | "b">;
+  matches: number;
+  timerStart: number;
+}
+
+function MindMatchGame({ onBack }: { onBack: () => void }) {
+  const [screen, setScreen] = useState<"menu" | "mp_setup" | "play">("menu");
+  const [mpCode, setMpCode] = useState("");
+  const [mpRole, setMpRole] = useState<"host" | "guest">("host");
+  const [mpPlayer, setMpPlayer] = useState<Player>("Jan");
+  const [timeLeft, setTimeLeft] = useState(MM_TIMER);
+  const advancedKey = useRef("");
+  const { session } = useMpSession(screen === "play", mpCode);
+
+  const mpState: MMState | null =
+    session?.state && Object.keys(session.state).length
+      ? (session.state as unknown as MMState)
+      : null;
+
+  // Timer
+  useEffect(() => {
+    if (!mpState || mpState.phase !== "tapping") return;
+    const start = mpState.timerStart;
+    function tick() { setTimeLeft(Math.max(0, Math.ceil(MM_TIMER - (Date.now() - start) / 1000))); }
+    tick();
+    const id = setInterval(tick, 300);
+    return () => clearInterval(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mpState?.round, mpState?.phase, mpState?.timerStart]);
+
+  // Host: auto-advance
+  useEffect(() => {
+    if (!mpState || !session || mpRole !== "host") return;
+    const key = `${mpState.round}:${mpState.phase}`;
+    if (advancedKey.current === key) return;
+
+    if (mpState.phase === "tapping") {
+      const both = Object.keys(mpState.taps).length >= 2;
+      const elapsed = (Date.now() - mpState.timerStart) / 1000;
+      if (both || elapsed >= MM_TIMER) {
+        advancedKey.current = key;
+        const tapA = mpState.taps.Jan;
+        const tapB = mpState.taps.Luca;
+        const matched = tapA && tapB && tapA === tapB ? 1 : 0;
+        void patchSession(session.id, {
+          state: { ...mpState, phase: "reveal", matches: (mpState.matches ?? 0) + matched },
+        });
+      }
+    }
+  }, [mpState, session, mpRole]);
+
+  function handleMpStart(code: string, role: "host" | "guest", player: Player) {
+    setMpCode(code); setMpRole(role); setMpPlayer(player);
+    setScreen("play");
+    if (role === "host") {
+      const idxs = [...Array(MM_QUESTIONS.length).keys()];
+      for (let i = idxs.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [idxs[i], idxs[j]] = [idxs[j]!, idxs[i]!];
+      }
+      void patchSession(code, {
+        state: {
+          round: 0,
+          questions: idxs.slice(0, MM_ROUNDS),
+          phase: "tapping",
+          taps: {},
+          matches: 0,
+          timerStart: Date.now(),
+        } as MMState,
+      });
+    }
+  }
+
+  async function tap(choice: "a" | "b") {
+    if (!mpState || !session || mpState.taps[mpPlayer]) return;
+    await patchSession(session.id, {
+      state: { ...mpState, taps: { ...mpState.taps, [mpPlayer]: choice } },
+    });
+  }
+
+  async function nextRound() {
+    if (!mpState || !session || mpRole !== "host") return;
+    const next = mpState.round + 1;
+    if (next >= MM_ROUNDS) {
+      await patchSession(session.id, { state: { ...mpState, phase: "done" } });
+    } else {
+      await patchSession(session.id, {
+        state: { ...mpState, round: next, phase: "tapping", taps: {}, timerStart: Date.now() },
+      });
+    }
+  }
+
+  const backBtn = (label: string, fn: () => void) => (
+    <button className="min-h-10 rounded-full border border-[#cfe0d7] bg-white/60 px-4 text-sm font-black text-[#125f68]" onClick={fn} type="button">{label}</button>
+  );
+
+  // ── menu ──
+  if (screen === "menu") {
+    return (
+      <div className="grid gap-5">
+        <div className="flex items-center gap-3">{backBtn("← Games", onBack)}<span className="text-xl font-black text-[#0e302e]">Mind Match 🧠</span></div>
+        <div className="ios-glass-card rounded-[28px] p-5">
+          <p className="text-sm font-semibold leading-6 text-[#5b6f68]">
+            Eine Frage erscheint. Beide tippen gleichzeitig A oder B — ohne zu reden.
+            Ihr bekommt gemeinsam einen Punkt wenn ihr übereinstimmt. Kein Gewinner, kein Verlierer.
+            Nur: wie gut kennt ihr euch?
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2 text-xs font-black">
+            {["🧠 35+ Fragen", "⏱ 12 Sek.", "🤝 Kooperativ", "📱 2 Handys"].map((t) => (
+              <span key={t} className="rounded-full bg-[#eff6f2] px-3 py-1.5 text-[#125f68]">{t}</span>
+            ))}
+          </div>
+          <button className="btn-sheen mt-5 min-h-12 w-full rounded-[18px] bg-[#125f68] font-black text-white" onClick={() => setScreen("mp_setup")} type="button">
+            Match starten 🧠
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── mp_setup ──
+  if (screen === "mp_setup") {
+    return (
+      <div className="grid gap-5">
+        <div className="flex items-center gap-3">{backBtn("← Zurück", () => setScreen("menu"))}<span className="text-xl font-black text-[#0e302e]">Multiplayer Setup</span></div>
+        <div className="ios-glass-card rounded-[28px] p-5"><MpSetup game="mindmatch" onStart={handleMpStart} /></div>
+      </div>
+    );
+  }
+
+  // ── play: loading ──
+  if (!mpState) {
+    return (
+      <div className="grid gap-5">
+        <div className="flex items-center gap-3">{backBtn("← Games", onBack)}</div>
+        <div className="ios-glass-card flex min-h-[200px] items-center justify-center rounded-[28px]">
+          <p className="font-bold text-[#789087]">Warte auf Spielstart …</p>
+        </div>
+      </div>
+    );
+  }
+
+  const q = MM_QUESTIONS[mpState.questions[mpState.round] ?? 0]!;
+  const roundLabel = `${mpState.round + 1} / ${MM_ROUNDS}`;
+  const myTap = mpState.taps[mpPlayer];
+  const otherPlayer: Player = mpPlayer === "Jan" ? "Luca" : "Jan";
+  const otherTap = mpState.taps[otherPlayer];
+  const pct = timeLeft / MM_TIMER;
+
+  // ── done ──
+  if (mpState.phase === "done") {
+    const m = mpState.matches;
+    const emoji = m >= 8 ? "🧠" : m >= 5 ? "💙" : m >= 3 ? "😄" : "🤷";
+    const msg = m >= 8 ? "Ihr seid ein Geist." : m >= 5 ? "Ihr kennt euch gut." : m >= 3 ? "Solide! Mehr Raki hilft." : "Ihr seid Mysterien füreinander.";
+    return (
+      <div className="grid gap-5">
+        <div className="flex items-center gap-3">{backBtn("← Games", onBack)}</div>
+        <div className="ios-glass-card rounded-[28px] p-6 text-center">
+          <p className="text-6xl">{emoji}</p>
+          <p className="mt-3 text-xs font-black uppercase tracking-[0.2em] text-[#789087]">Übereinstimmung</p>
+          <p className="mt-2 text-5xl font-black text-[#0e302e]">{m}<span className="text-2xl text-[#789087]">/{MM_ROUNDS}</span></p>
+          <p className="mt-2 font-semibold text-[#5b6f68]">{msg}</p>
+          <button className="btn-sheen mt-6 min-h-12 w-full rounded-[18px] bg-[#125f68] font-black text-white" onClick={() => setScreen("menu")} type="button">Nochmal</button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── tapping ──
+  if (mpState.phase === "tapping") {
+    return (
+      <div className="grid gap-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">{backBtn("← Games", onBack)}<span className="font-black text-[#789087]">Runde {roundLabel}</span></div>
+          <span className={["rounded-full px-3 py-1 text-sm font-black tabular-nums", pct < 0.3 ? "bg-[#fee2e2] text-[#e8344a]" : "bg-[#eff6f2] text-[#125f68]"].join(" ")}>{timeLeft}s</span>
+        </div>
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#d7e3dc]">
+          <div className={["h-full rounded-full transition-all duration-300", pct < 0.3 ? "bg-[#e8344a]" : "bg-[#125f68]"].join(" ")} style={{ width: `${pct * 100}%` }} />
+        </div>
+        <div className="ios-glass-card rounded-[28px] p-5 text-center">
+          <span className="text-4xl">{q.emoji}</span>
+          <p className="mt-3 text-xl font-black leading-snug text-[#0e302e]">{q.text}</p>
+          <p className="mt-1 text-xs font-semibold text-[#789087]">Nicht reden — einfach tippen!</p>
+        </div>
+        {!myTap ? (
+          <div className="grid grid-cols-2 gap-3">
+            {(["a", "b"] as const).map((choice) => (
+              <button
+                key={choice}
+                className="ios-glass-card card-interactive min-h-[120px] rounded-[24px] p-5 text-center active:scale-[0.97]"
+                onClick={() => void tap(choice)}
+                type="button"
+              >
+                <span className="block text-xs font-black uppercase tracking-[0.2em] text-[#789087]">Option {choice.toUpperCase()}</span>
+                <span className="mt-3 block text-xl font-black leading-snug text-[#0e302e]">{choice === "a" ? q.a : q.b}</span>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="ios-glass-card rounded-[28px] p-5 text-center">
+            <p className="text-2xl">{myTap === "a" ? q.a : q.b}</p>
+            <p className="mt-2 text-sm font-semibold text-[#789087]">
+              {otherTap ? "✓ Beide getippt — gleich Auflösung …" : `⏳ Warte auf ${otherPlayer} …`}
+            </p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── reveal ──
+  if (mpState.phase === "reveal") {
+    const janTap = mpState.taps.Jan;
+    const lucaTap = mpState.taps.Luca;
+    const matched = janTap && lucaTap && janTap === lucaTap;
+    return (
+      <div className="grid gap-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">{backBtn("← Games", onBack)}<span className="font-black text-[#789087]">Runde {roundLabel}</span></div>
+          <span className="font-black text-[#125f68]">{mpState.matches} Match{mpState.matches !== 1 ? "es" : ""}</span>
+        </div>
+        <div className={["rounded-[28px] p-5 text-center", matched ? "bg-[#0e5558] text-white" : "ios-glass-card"].join(" ")}>
+          <p className="text-4xl">{matched ? "✅" : "❌"}</p>
+          <p className="mt-2 text-2xl font-black">{matched ? "Match!" : "Kein Match"}</p>
+          <p className={["mt-1 text-sm font-semibold", matched ? "text-white/70" : "text-[#789087]"].join(" ")}>
+            {q.text}
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          {(["Jan", "Luca"] as Player[]).map((p) => {
+            const t = mpState.taps[p];
+            const answer = t === "a" ? q.a : t === "b" ? q.b : "–";
+            return (
+              <div key={p} className="ios-glass-card rounded-[24px] p-4 text-center">
+                <p className="text-xs font-black text-[#789087]">{p}</p>
+                <p className="mt-2 text-lg font-black text-[#0e302e]">{answer}</p>
+                <p className="text-xs font-semibold text-[#789087]">({t?.toUpperCase() ?? "–"})</p>
+              </div>
+            );
+          })}
+        </div>
+        {mpRole === "host" ? (
+          <button className="btn-sheen min-h-12 w-full rounded-[18px] bg-[#125f68] font-black text-white" onClick={() => void nextRound()} type="button">
+            {mpState.round + 1 >= MM_ROUNDS ? "Ergebnis →" : "Nächste Frage →"}
+          </button>
+        ) : (
+          <p className="text-center text-sm font-semibold text-[#789087]">Warte auf Host …</p>
+        )}
+      </div>
+    );
+  }
+
+  return null;
+}
+
 // ─── IMPROV CHAOS ────────────────────────────────────────────────────────────
 
 const CHAOS_SCENARIOS = [
@@ -1356,10 +1669,11 @@ function ChaosGame({ onBack }: { onBack: () => void }) {
 // ─── GAME LOBBY ───────────────────────────────────────────────────────────────
 
 const games: { id: GameId; emoji: string; title: string; desc: string; tag: string }[] = [
-  { id: "chaos",    emoji: "🎭", title: "Improv Chaos",  desc: "Absurde Kreta-Szenarien, 45 Sek. schreiben, dann voten. Aus über 70 Situationen.", tag: "🔥 NEU" },
-  { id: "krikri",   emoji: "🐐", title: "Kri-Kri Blitz", desc: "Reaktions-Duell. Warte auf das Kri-Kri und tippe schneller als der Berg.", tag: "Reaktion" },
-  { id: "trivia",   emoji: "🏛️", title: "Kreta Trivia",  desc: "15 Fragen über Kreta, Knossos, Dakos und eure Reise. Wer kennt die Insel?", tag: "Wissen" },
-  { id: "distance", emoji: "🧭", title: "Insel-Kompass", desc: "Schätze die Luftlinie von eurem Hotel zu 15 Orten auf Kreta.", tag: "Entfernung" },
+  { id: "chaos",     emoji: "🎭", title: "Improv Chaos",  desc: "Absurdes Kreta-Szenario, 45 Sek. schreiben, dann voten. 75 Situationen.", tag: "🔥 Neu" },
+  { id: "mindmatch", emoji: "🧠", title: "Mind Match",    desc: "Beide tippen gleichzeitig — ohne zu reden. Wie gut kennt ihr euch?", tag: "Kooperativ" },
+  { id: "krikri",    emoji: "🐐", title: "Kri-Kri Blitz", desc: "Reaktions-Duell. Warte auf das Kri-Kri und tippe schneller als der Berg.", tag: "Reaktion" },
+  { id: "trivia",    emoji: "🏛️", title: "Kreta Trivia",  desc: "15 Fragen über Kreta, Knossos, Dakos und eure Reise.", tag: "Wissen" },
+  { id: "distance",  emoji: "🧭", title: "Insel-Kompass", desc: "Schätze die Luftlinie von eurem Hotel zu 15 Orten auf Kreta.", tag: "Entfernung" },
 ];
 
 function GameLobby({ onBack, onPlay }: { onBack: () => void; onPlay: (id: GameId) => void }) {
@@ -1410,9 +1724,10 @@ function GameLobby({ onBack, onPlay }: { onBack: () => void; onPlay: (id: GameId
 export default function MiniGamesView({ onBack }: { onBack: () => void }) {
   const [screen, setScreen] = useState<AppScreen>("lobby");
 
-  if (screen === "chaos")    return <ChaosGame    onBack={() => setScreen("lobby")} />;
-  if (screen === "krikri")   return <KriKriGame   onBack={() => setScreen("lobby")} />;
-  if (screen === "trivia")   return <TriviaGame   onBack={() => setScreen("lobby")} />;
-  if (screen === "distance") return <DistanceGame onBack={() => setScreen("lobby")} />;
+  if (screen === "chaos")     return <ChaosGame     onBack={() => setScreen("lobby")} />;
+  if (screen === "mindmatch") return <MindMatchGame onBack={() => setScreen("lobby")} />;
+  if (screen === "krikri")    return <KriKriGame    onBack={() => setScreen("lobby")} />;
+  if (screen === "trivia")    return <TriviaGame    onBack={() => setScreen("lobby")} />;
+  if (screen === "distance")  return <DistanceGame  onBack={() => setScreen("lobby")} />;
   return <GameLobby onBack={onBack} onPlay={setScreen} />;
 }

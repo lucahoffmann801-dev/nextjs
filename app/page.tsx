@@ -37,8 +37,9 @@ import type {
 import { routeWeatherAdjustment, weatherCodeEmoji, weatherCodeLabel } from "./lib/weather-domain";
 import type { WeatherPointRequest, WeatherPointSnapshot, WeatherResponse } from "./lib/weather-types";
 import MiniGamesView from "./components/mini-games-view";
+import OrakelView from "./components/orakel-view";
 
-type View = "home" | "kosten" | "reise" | "routen" | "karte" | "guide" | "packen" | "spiele";
+type View = "home" | "kosten" | "reise" | "routen" | "karte" | "guide" | "packen" | "spiele" | "orakel";
 type GuideMode = "restaurants" | "sights";
 type PackItem = (typeof fallbackPackItems)[number] & {
   lucaDone?: boolean;
@@ -1880,6 +1881,7 @@ export default function Home() {
             <PackView onTogglePack={togglePackItem} packItems={appState.packItems} />
           )}
           {view === "spiele" && <MiniGamesView onBack={() => setView("home")} />}
+          {view === "orakel" && <OrakelView onBack={() => setView("home")} />}
           </div>
 
           <footer className="mt-8 border-t border-[#d7e3dc] pt-5 text-sm text-[#5b6f68]">
@@ -2187,7 +2189,8 @@ function HomeView({
       action: () => setView("reise"),
     },
     { emoji: "💶", label: "Kosten & Ausgleich", sub: settlementShort, action: () => setView("kosten") },
-    { emoji: "🐐", label: "Mini Games", sub: "Kri-Kri Blitz", action: () => setView("spiele") },
+    { emoji: "🐐", label: "Mini Games", sub: "5 Spiele · Multiplayer", action: () => setView("spiele") },
+    { emoji: "🔮", label: "Orakel", sub: "25 Reisewetten", action: () => setView("orakel") },
   ];
 
   return (
@@ -2271,6 +2274,20 @@ function HomeView({
           ))}
         </div>
       </section>
+
+      {/* Orakel teaser */}
+      <button
+        className="flex w-full items-center gap-3 rounded-[20px] bg-[linear-gradient(135deg,#1a0533,#4a1070_60%,#e8a94a)] px-4 py-3 text-left text-white transition active:scale-[0.99]"
+        onClick={() => setView("orakel")}
+        type="button"
+      >
+        <span className="text-2xl">🔮</span>
+        <div className="flex-1">
+          <p className="text-sm font-black">Kreta Orakel</p>
+          <p className="text-xs font-semibold text-white/70">25 Reisewetten für Jan &amp; Luca</p>
+        </div>
+        <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-black backdrop-blur">Wetten →</span>
+      </button>
 
       {planTitle && (
         <section className="ios-glass-card rounded-[24px] border-[#125f68]/22 p-4">
