@@ -936,12 +936,12 @@ const MM_QUESTIONS: MMQuestion[] = [
   // Tiefe Fragen (zum Schmunzeln)
   { text: "Besser: Zeitreise zu den Minoern oder Unterwasserpalast entdecken?", a: "⏳ Minoer", b: "🌊 Unterwasserpalast", emoji: "🏛️" },
   { text: "Welche Gefahr ist auf Kreta realer?", a: "🦟 Mücken", b: "🌞 Sonnenstich", emoji: "⚠️" },
-  { text: "Das ehrlichere Reise-Fazit nach Tag 1?", a: "„Hier bleib ich für immer"", b: "„Schön, aber wann ist Frühstück?"", emoji: "🌅" },
+  { text: "Das ehrlichere Reise-Fazit nach Tag 1?", a: "»Hier bleib ich für immer«", b: "»Schön, aber wann ist Frühstück?«", emoji: "🌅" },
   { text: "Wenn Jan ein Kreta-Tier wäre, wäre er…", a: "🐐 Kri-Kri (eigenständig, wählerisch)", b: "🦎 Eidechse (ruhig, beobachtend)", emoji: "🤔" },
   { text: "Wenn Luca ein Kreta-Gericht wäre, wäre er…", a: "🍢 Souvlaki (direkt, immer gut)", b: "🥗 Dakos (komplex, regional)", emoji: "🤔" },
   { text: "Bester Kreta-Moment?", a: "🤫 Stille Sekunde am Meer", b: "🎉 Gemeinsam lachen über was Dummes", emoji: "✨" },
   { text: "Das Ende der Reise bringt vor allem…", a: "😌 Erholung (endlich)", b: "😢 Wehmut (schon vorbei)", emoji: "🏠" },
-  { text: "Kreta-Philosophie?", a: "„Siga siga" – langsam, langsam", b: "„Noch ein Ort, bevor es dunkel wird"", emoji: "🐌" },
+  { text: "Kreta-Philosophie?", a: "»Siga siga« – langsam, langsam", b: "»Noch ein Ort, bevor es dunkel wird«", emoji: "🐌" },
   { text: "Die ehrlichste Urlaubskategorie?", a: "🍽️ Ich esse mich durch", b: "😴 Ich schlafe mich durch", emoji: "😇" },
   { text: "Wer von beiden ist Kreta?", a: "Jan — ruhig, beständig, tief", b: "Luca — lebendig, warm, überraschend", emoji: "🏝️" },
 ];
