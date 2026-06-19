@@ -3,10 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import PixelArtView from "./pixel-art-view";
 import SoundscapeView from "./soundscape-view";
+import SeeschlachtView from "./seeschlacht-view";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type GameId = "krikri" | "trivia" | "distance" | "chaos" | "mindmatch" | "pixel" | "soundscape";
+type GameId = "krikri" | "trivia" | "distance" | "chaos" | "mindmatch" | "pixel" | "soundscape" | "seeschlacht";
 type Player = "Jan" | "Luca";
 type AppScreen = "lobby" | GameId;
 
@@ -907,22 +908,40 @@ interface MMQuestion {
 }
 
 const MM_QUESTIONS: MMQuestion[] = [
-  // Kreta-Vorlieben
+  // ── Kreta: Essen & Trinken ──────────────────────────────────────────────────
   { text: "Was ist besser?", a: "Frappé", b: "Raki", emoji: "☕" },
-  { text: "Lieber an die…", a: "🏖️ Strand", b: "⛰️ Berge", emoji: "🌊" },
-  { text: "Urlaubs-Modus?", a: "🦥 Liegen & Dösen", b: "🦁 Alles erkunden", emoji: "😎" },
-  { text: "Abendessen wann?", a: "19 Uhr — Hunger hat Grenzen", b: "21+ Uhr — so macht man das hier", emoji: "🍽️" },
   { text: "Was ist kretischer?", a: "Dakos", b: "Gyros", emoji: "🫒" },
   { text: "Erster Griff nach der Landung?", a: "💧 Wasser", b: "🍺 Bier", emoji: "✈️" },
   { text: "Oktopus essen?", a: "Ja, sofort", b: "Nein, danke", emoji: "🐙" },
+  { text: "Abendessen wann?", a: "19 Uhr — Hunger hat Grenzen", b: "21+ Uhr — so macht man das hier", emoji: "🍽️" },
+  { text: "Olivenöl?", a: "🫒 Auf alles kippen — so macht man das", b: "💧 Maßvoll — das ist auch Fett", emoji: "🫒" },
+  { text: "Bestes Kreta-Frühstück?", a: "🥚 Omelett mit Oliven & Kräutern", b: "☕ Kaffee zuerst — Essen später", emoji: "🌅" },
+  { text: "Frisches Brot mit …?", a: "🧄 Knoblauch & Öl", b: "🍅 Tomate direkt draufreiben", emoji: "🍞" },
+  { text: "Kreta-Dessert?", a: "🍯 Loukoumades (Honig-Donuts)", b: "🍨 Aprikosen-Eis am Strand", emoji: "🍯" },
+  { text: "Meeresfrüchte?", a: "🦐 Garnelen — immer", b: "🐙 Oktopus — wenn er am Seil hängt", emoji: "🌊" },
+  { text: "Bestes Kreta-Getränk?", a: "🍷 Weißwein direkt am Hafen", b: "☕ Griechischer Kaffee um 14 Uhr", emoji: "🍷" },
+  { text: "Pool oder Meer?", a: "🏊 Pool", b: "🌊 Meer", emoji: "💦" },
+  // ── Kreta: Aktivitäten & Stimmung ──────────────────────────────────────────
+  { text: "Lieber an die …", a: "🏖️ Strand", b: "⛰️ Berge", emoji: "🌊" },
+  { text: "Urlaubs-Modus?", a: "🦥 Liegen & Dösen", b: "🦁 Alles erkunden", emoji: "😎" },
   { text: "Wandern ohne Handy?", a: "Ja gerne, endlich", b: "Nein, unmöglich", emoji: "🥾" },
-  { text: "Bestes Kreta-Tier?", a: "🐐 Kri-Kri", b: "🐢 Meeresschildkröte", emoji: "🦎" },
   { text: "Knossos oder Strand?", a: "🏛️ Knossos", b: "🏖️ Strand", emoji: "🗺️" },
   { text: "Abends am Meer?", a: "🌅 Sonnenuntergang gucken", b: "🍷 Wein trinken", emoji: "🌙" },
   { text: "Urlaubslektüre?", a: "📖 Buch mitgenommen", b: "📱 Reels gucken reicht", emoji: "🌴" },
   { text: "Souvenirs kaufen?", a: "Ja, für alle", b: "Nein, Fotos sind Erinnerung genug", emoji: "🛍️" },
-  { text: "Pool oder Meer?", a: "🏊 Pool", b: "🌊 Meer", emoji: "💦" },
-  // Jan & Luca über sich gegenseitig
+  { text: "Das erste Mal ins Meer?", a: "💨 Sofort rein — wozu warten", b: "🦶 Langsam reintasten — kalt!", emoji: "🏊" },
+  { text: "Urlaubstag-Tempo?", a: "⚡ Früh aufstehen, viel erleben", b: "🐢 Langsam aufwachen, sehen was kommt", emoji: "⏰" },
+  { text: "Was bringt mehr?", a: "🗺️ Täglich einen neuen Ort erkunden", b: "🏖️ Einen Lieblingsplatz immer wieder", emoji: "🏝️" },
+  { text: "Urlaubs-Ritual?", a: "📖 Morgens Kaffee & ein Notizbuch", b: "📵 Handy weg und einfach da sein", emoji: "☕" },
+  // ── Kreta: Orte & Natur ─────────────────────────────────────────────────────
+  { text: "Bestes Kreta-Tier?", a: "🐐 Kri-Kri", b: "🐢 Meeresschildkröte", emoji: "🦎" },
+  { text: "Heraklion oder Chania?", a: "🏛️ Heraklion — Knossos & Lebendigkeit", b: "🏰 Chania — venezianischer Hafen", emoji: "🌆" },
+  { text: "Schönste Kreta-Bucht?", a: "💎 Geheimtipp ohne Touristen", b: "🏖️ Belebter Strand mit Sunbeds", emoji: "🗺️" },
+  { text: "Schlucht oder Küste?", a: "🏔️ Samaria-Schlucht — epic", b: "🌊 Loutro per Boot — magisch", emoji: "🚶" },
+  { text: "Kretische Natur?", a: "🌺 Wildblumen & Macchia", b: "🦎 Eidechsen & Zikaden", emoji: "🏕️" },
+  { text: "Bestes Licht auf Kreta?", a: "🌅 Sonnenaufgang über dem Meer", b: "🌄 Abendrot über den Bergen", emoji: "☀️" },
+  { text: "Kreta 1600 v. Chr. oder heute?", a: "🏛️ Minoa — tauche in die Ursprünge", b: "📱 Heute — WLAN und Klimaanlage", emoji: "⏳" },
+  // ── Jan & Luca — wer ist wer ────────────────────────────────────────────────
   { text: "Wer schläft morgen länger?", a: "Jan", b: "Luca", emoji: "😴" },
   { text: "Wer navigiert besser?", a: "Jan", b: "Luca", emoji: "🧭" },
   { text: "Wer isst mutiger?", a: "Jan", b: "Luca", emoji: "🐟" },
@@ -935,17 +954,40 @@ const MM_QUESTIONS: MMQuestion[] = [
   { text: "Wer kauft das überflüssigste Souvenir?", a: "Jan", b: "Luca", emoji: "🪄" },
   { text: "Wer dreht am Ende die Reise-Playlist?", a: "Jan", b: "Luca", emoji: "🎵" },
   { text: "Wer ist der unfreiwillige Komiker der Reise?", a: "Jan", b: "Luca", emoji: "🎭" },
-  // Tiefe Fragen (zum Schmunzeln)
+  { text: "Wer sagt zuerst »Ich bin satt«?", a: "Jan", b: "Luca", emoji: "🍽️" },
+  { text: "Wer bleibt länger im Wasser?", a: "Jan", b: "Luca", emoji: "🏊" },
+  { text: "Wer findet den versteckten Weg?", a: "Jan", b: "Luca", emoji: "🗺️" },
+  { text: "Wer zögert länger vor der unbekannten Speise?", a: "Jan", b: "Luca", emoji: "🤔" },
+  { text: "Wer reagiert cooler, wenn was schiefläuft?", a: "Jan", b: "Luca", emoji: "😎" },
+  { text: "Wer schreibt später einen Song über Kreta?", a: "Jan", b: "Luca", emoji: "🎵" },
+  { text: "Wer trinkt mehr Kaffee pro Tag?", a: "Jan", b: "Luca", emoji: "☕" },
+  { text: "Wer wacht auf und will sofort losziehen?", a: "Jan", b: "Luca", emoji: "🌅" },
+  { text: "Wer lernt zuerst 3 griechische Wörter?", a: "Jan", b: "Luca", emoji: "🇬🇷" },
+  { text: "Wer bringt mehr Energie für Tagesausflüge?", a: "Jan", b: "Luca", emoji: "⚡" },
+  { text: "Wer würde einen Straßenhund adoptieren?", a: "Jan", b: "Luca", emoji: "🐕" },
+  // ── Tiefe Fragen & Absurdes ─────────────────────────────────────────────────
   { text: "Besser: Zeitreise zu den Minoern oder Unterwasserpalast entdecken?", a: "⏳ Minoer", b: "🌊 Unterwasserpalast", emoji: "🏛️" },
   { text: "Welche Gefahr ist auf Kreta realer?", a: "🦟 Mücken", b: "🌞 Sonnenstich", emoji: "⚠️" },
   { text: "Das ehrlichere Reise-Fazit nach Tag 1?", a: "»Hier bleib ich für immer«", b: "»Schön, aber wann ist Frühstück?«", emoji: "🌅" },
-  { text: "Wenn Jan ein Kreta-Tier wäre, wäre er…", a: "🐐 Kri-Kri (eigenständig, wählerisch)", b: "🦎 Eidechse (ruhig, beobachtend)", emoji: "🤔" },
-  { text: "Wenn Luca ein Kreta-Gericht wäre, wäre er…", a: "🍢 Souvlaki (direkt, immer gut)", b: "🥗 Dakos (komplex, regional)", emoji: "🤔" },
+  { text: "Wenn Jan ein Kreta-Tier wäre …", a: "🐐 Kri-Kri (eigenständig, wählerisch)", b: "🦎 Eidechse (ruhig, beobachtend)", emoji: "🤔" },
+  { text: "Wenn Luca ein Kreta-Gericht wäre …", a: "🍢 Souvlaki (direkt, immer gut)", b: "🥗 Dakos (komplex, regional)", emoji: "🤔" },
   { text: "Bester Kreta-Moment?", a: "🤫 Stille Sekunde am Meer", b: "🎉 Gemeinsam lachen über was Dummes", emoji: "✨" },
-  { text: "Das Ende der Reise bringt vor allem…", a: "😌 Erholung (endlich)", b: "😢 Wehmut (schon vorbei)", emoji: "🏠" },
-  { text: "Kreta-Philosophie?", a: "»Siga siga« – langsam, langsam", b: "»Noch ein Ort, bevor es dunkel wird«", emoji: "🐌" },
+  { text: "Das Ende der Reise bringt vor allem …", a: "😌 Erholung (endlich)", b: "😢 Wehmut (schon vorbei)", emoji: "🏠" },
+  { text: "Kreta-Philosophie?", a: "»Siga siga« — langsam, langsam", b: "»Noch ein Ort, bevor es dunkel wird«", emoji: "🐌" },
   { text: "Die ehrlichste Urlaubskategorie?", a: "🍽️ Ich esse mich durch", b: "😴 Ich schlafe mich durch", emoji: "😇" },
   { text: "Wer von beiden ist Kreta?", a: "Jan — ruhig, beständig, tief", b: "Luca — lebendig, warm, überraschend", emoji: "🏝️" },
+  { text: "Wenn Kreta ein Musikstil wäre?", a: "🎸 Langsamer Blues am Meer", b: "🪗 Traditionelles Fest mit Lyra", emoji: "🎵" },
+  { text: "Wenn du ein Kreta-Dorf wärst …", a: "🏔️ Kleines Bergdorf — ruhig, versteckt", b: "⚓ Fischerdorf am Hafen — lebendig", emoji: "🏡" },
+  { text: "Was trifft mehr?", a: "🌊 Das Meer — grenzenlos und frei", b: "🏛️ Die Ruinen — Geschichte überall", emoji: "✨" },
+  { text: "Lieber für einen Tag …?", a: "🐐 Kri-Kri in den Bergen herumstreifen", b: "🐠 Mittelmeerfisch unter Wasser leben", emoji: "🤩" },
+  { text: "Wenn ihr auf Kreta strandete?", a: "🏕️ Abenteuer — ich baue eine Hütte", b: "🛟 Panik — wie komme ich nach Hause?", emoji: "🏝️" },
+  { text: "Magischer Moment auf Reisen?", a: "🌙 Nachts allein am Wasser stehen", b: "🤝 Zufällig mit Einheimischen feiern", emoji: "✨" },
+  { text: "Wenn das Meer ein Gefühl wäre?", a: "🫂 Umarmung — warm und sicher", b: "🌀 Abenteuer — unruhig und weit", emoji: "🌊" },
+  { text: "Erinnerungen festhalten wie?", a: "📸 Fotos — die Momente halten", b: "🧠 Im Kopf — Fotos ruinieren Momente", emoji: "💭" },
+  { text: "Bestes Urlaubsgefühl?", a: "😮 Das erste Mal ankommen & staunen", b: "🥺 Der letzte Abend — alles festhalten", emoji: "✨" },
+  { text: "Auf Kreta wohnen für immer?", a: "🏖️ Ja sofort — wann kann ich einziehen?", b: "🤔 Schön zum Besuchen, aber …", emoji: "🏠" },
+  { text: "Kreta ohne andere Touristen?", a: "👤 Ja — das echte, stille Kreta", b: "🎉 Nein — das bunte Treiben gehört dazu", emoji: "🏝️" },
+  { text: "Jan und Luca als Kreta-Gericht?", a: "🥗 Horiatiki — frisch, klar, ehrlich", b: "🍲 Stifado — komplex, langsam, warm", emoji: "🍽️" },
 ];
 
 const MM_ROUNDS = 10;
@@ -1671,13 +1713,14 @@ function ChaosGame({ onBack }: { onBack: () => void }) {
 // ─── GAME LOBBY ───────────────────────────────────────────────────────────────
 
 const games: { id: GameId; emoji: string; title: string; desc: string; tag: string }[] = [
-  { id: "pixel",      emoji: "🎨", title: "Pixel Art",     desc: "Gemeinsam ein Bild aufbauen — Frangokastello, Kri-Kri oder einfach frei malen.", tag: "✨ Neu" },
-  { id: "soundscape", emoji: "🎵", title: "Kreta Klangwelt", desc: "Mischt eure eigene Kreta-Atmosphäre: Wellen, Zikaden, Taverna-Musik und mehr.", tag: "✨ Neu" },
-  { id: "chaos",     emoji: "🎭", title: "Improv Chaos",  desc: "Absurdes Kreta-Szenario, 45 Sek. schreiben, dann voten. 75 Situationen.", tag: "🔥 Heiß" },
-  { id: "mindmatch", emoji: "🧠", title: "Mind Match",    desc: "Beide tippen gleichzeitig — ohne zu reden. Wie gut kennt ihr euch?", tag: "Kooperativ" },
-  { id: "krikri",    emoji: "🐐", title: "Kri-Kri Blitz", desc: "Reaktions-Duell. Warte auf das Kri-Kri und tippe schneller als der Berg.", tag: "Reaktion" },
-  { id: "trivia",    emoji: "🏛️", title: "Kreta Trivia",  desc: "15 Fragen über Kreta, Knossos, Dakos und eure Reise.", tag: "Wissen" },
-  { id: "distance",  emoji: "🧭", title: "Insel-Kompass", desc: "Schätze die Luftlinie von eurem Hotel zu 15 Orten auf Kreta.", tag: "Entfernung" },
+  { id: "seeschlacht", emoji: "⚓", title: "Kreta Seeschlacht", desc: "Schiffe versenken — Raum-Code, Flotte platzieren, angreifen, gewinnen. Kretisches Seemannsduell.", tag: "✨ Neu" },
+  { id: "pixel",       emoji: "🎨", title: "Pixel Art",         desc: "Gemeinsam ein Bild aufbauen — Frangokastello, Kri-Kri oder einfach frei malen.", tag: "✨ Neu" },
+  { id: "soundscape",  emoji: "🎵", title: "Kreta Klangwelt",   desc: "Mischt eure eigene Kreta-Atmosphäre: Wellen, Zikaden, Taverna-Musik und mehr.", tag: "✨ Neu" },
+  { id: "chaos",       emoji: "🎭", title: "Improv Chaos",      desc: "Absurdes Kreta-Szenario, 45 Sek. schreiben, dann voten. 75 Situationen.", tag: "🔥 Heiß" },
+  { id: "mindmatch",   emoji: "🧠", title: "Mind Match",        desc: "Beide tippen gleichzeitig — ohne zu reden. Wie gut kennt ihr euch? 80+ Fragen.", tag: "Kooperativ" },
+  { id: "krikri",      emoji: "🐐", title: "Kri-Kri Blitz",     desc: "Reaktions-Duell. Warte auf das Kri-Kri und tippe schneller als der Berg.", tag: "Reaktion" },
+  { id: "trivia",      emoji: "🏛️", title: "Kreta Trivia",      desc: "15 Fragen über Kreta, Knossos, Dakos und eure Reise.", tag: "Wissen" },
+  { id: "distance",    emoji: "🧭", title: "Insel-Kompass",     desc: "Schätze die Luftlinie von eurem Hotel zu 15 Orten auf Kreta.", tag: "Entfernung" },
 ];
 
 function GameLobby({ onBack, onPlay }: { onBack: () => void; onPlay: (id: GameId) => void }) {
@@ -1695,7 +1738,7 @@ function GameLobby({ onBack, onPlay }: { onBack: () => void; onPlay: (id: GameId
         <p className="relative z-10 mt-8 text-xs font-black uppercase tracking-[0.2em] text-[#9de7dc]">Mini Games · Kreta Edition</p>
         <h2 className="relative z-10 mt-2 text-4xl font-black leading-none sm:text-5xl">Game Hub</h2>
         <p className="relative z-10 mt-3 max-w-xl text-base font-semibold leading-7 text-white/80">
-          7 Spiele für Jan &amp; Luca – solo, kooperativ und live auf zwei Handys.
+          8 Spiele für Jan &amp; Luca – solo, kooperativ und live auf zwei Handys.
         </p>
       </section>
 
@@ -1728,12 +1771,13 @@ function GameLobby({ onBack, onPlay }: { onBack: () => void; onPlay: (id: GameId
 export default function MiniGamesView({ onBack }: { onBack: () => void }) {
   const [screen, setScreen] = useState<AppScreen>("lobby");
 
-  if (screen === "pixel")      return <PixelArtView   onBack={() => setScreen("lobby")} />;
-  if (screen === "soundscape") return <SoundscapeView onBack={() => setScreen("lobby")} />;
-  if (screen === "chaos")      return <ChaosGame      onBack={() => setScreen("lobby")} />;
-  if (screen === "mindmatch")  return <MindMatchGame  onBack={() => setScreen("lobby")} />;
-  if (screen === "krikri")     return <KriKriGame     onBack={() => setScreen("lobby")} />;
-  if (screen === "trivia")     return <TriviaGame     onBack={() => setScreen("lobby")} />;
-  if (screen === "distance")   return <DistanceGame   onBack={() => setScreen("lobby")} />;
+  if (screen === "seeschlacht") return <SeeschlachtView onBack={() => setScreen("lobby")} />;
+  if (screen === "pixel")       return <PixelArtView    onBack={() => setScreen("lobby")} />;
+  if (screen === "soundscape")  return <SoundscapeView  onBack={() => setScreen("lobby")} />;
+  if (screen === "chaos")       return <ChaosGame       onBack={() => setScreen("lobby")} />;
+  if (screen === "mindmatch")   return <MindMatchGame   onBack={() => setScreen("lobby")} />;
+  if (screen === "krikri")      return <KriKriGame      onBack={() => setScreen("lobby")} />;
+  if (screen === "trivia")      return <TriviaGame      onBack={() => setScreen("lobby")} />;
+  if (screen === "distance")    return <DistanceGame    onBack={() => setScreen("lobby")} />;
   return <GameLobby onBack={onBack} onPlay={setScreen} />;
 }
