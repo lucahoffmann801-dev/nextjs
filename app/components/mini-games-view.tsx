@@ -460,7 +460,7 @@ function TriviaGame({ onBack }: { onBack: () => void }) {
   }
 
   const mpState: TriviaState | null = session?.state && Object.keys(session.state).length
-    ? session.state as TriviaState : null;
+    ? session.state as unknown as TriviaState : null;
 
   async function answerMp(idx: number) {
     if (!mpState || !session) return;
@@ -680,7 +680,7 @@ function DistanceGame({ onBack }: { onBack: () => void }) {
   const [mpGuessInput, setMpGuessInput] = useState("");
   const { session } = useMpSession(screen === "mp_play", mpCode);
 
-  const mpState: DistState | null = session?.state && Object.keys(session.state).length ? session.state as DistState : null;
+  const mpState: DistState | null = session?.state && Object.keys(session.state).length ? session.state as unknown as DistState : null;
 
   function startSolo() {
     setSoloIdx(0); setSoloGuess(""); setSoloRevealed(false); setSoloScore(0); setSoloFinished(false);
