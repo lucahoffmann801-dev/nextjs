@@ -123,7 +123,7 @@ export default function OrakelView({ onBack }: { onBack: () => void }) {
   // ── Player selection ──
   if (!player) {
     return (
-      <div className="grid gap-5">
+      <div className="grid gap-5 overflow-x-clip">
         <div className="flex items-center gap-3">
           <button className="min-h-10 rounded-full border border-[#cfe0d7] bg-white/60 px-4 text-sm font-black text-[#125f68]" onClick={onBack} type="button">← Dashboard</button>
         </div>
@@ -184,7 +184,7 @@ export default function OrakelView({ onBack }: { onBack: () => void }) {
   // ── Loading ──
   if (loading || !state) {
     return (
-      <div className="grid gap-5">
+      <div className="grid gap-5 overflow-x-clip">
         <div className="flex items-center gap-3">
           <button className="min-h-10 rounded-full border border-[#cfe0d7] bg-white/60 px-4 text-sm font-black text-[#125f68]" onClick={onBack} type="button">← Dashboard</button>
         </div>
@@ -222,7 +222,7 @@ export default function OrakelView({ onBack }: { onBack: () => void }) {
     const myCorrect = isResolved && myBet === bet.result;
 
     return (
-      <div className="grid gap-4">
+      <div className="grid gap-4 overflow-x-clip">
         <div className="flex items-center gap-3">
           <button className="min-h-10 rounded-full border border-[#cfe0d7] bg-white/60 px-4 text-sm font-black text-[#125f68]" onClick={() => setScreen("list")} type="button">← Orakel</button>
           <span className="text-sm font-black text-[#789087]">Wette {selected + 1}/25</span>
@@ -338,7 +338,7 @@ export default function OrakelView({ onBack }: { onBack: () => void }) {
   });
 
   return (
-    <div className="grid gap-5">
+    <div className="grid gap-5 overflow-x-clip">
       {/* Header */}
       <section className="relative overflow-hidden rounded-[28px] bg-[linear-gradient(135deg,#1a0533,#4a1070_55%,#e8a94a)] p-5 text-white shadow-[0_24px_65px_rgba(30,5,60,0.28)] sm:p-7">
         <div aria-hidden="true" className="absolute -right-6 -top-8 text-[130px] opacity-15">🔮</div>
@@ -349,14 +349,14 @@ export default function OrakelView({ onBack }: { onBack: () => void }) {
           25 Wetten über Jan & Lucas Kreta-Reise. Tippen, wetten, am Ende abrechnen.
         </p>
         {/* Score */}
-        <div className="relative z-10 mt-5 flex gap-4">
+        <div className="relative z-10 mt-5 flex flex-wrap gap-2">
           {(["Jan", "Luca"] as Player[]).map((p) => (
-            <div key={p} className="rounded-[14px] bg-white/15 px-4 py-2 backdrop-blur">
+            <div key={p} className="rounded-[14px] bg-white/15 px-3 py-2 backdrop-blur">
               <p className="text-xs font-black text-white/70">{p}</p>
               <p className="text-2xl font-black tabular-nums">{state.scores[p] ?? 0} <span className="text-sm font-semibold text-white/70">Pkt.</span></p>
             </div>
           ))}
-          <div className="rounded-[14px] bg-white/15 px-4 py-2 backdrop-blur">
+          <div className="rounded-[14px] bg-white/15 px-3 py-2 backdrop-blur">
             <p className="text-xs font-black text-white/70">Aufgelöst</p>
             <p className="text-2xl font-black tabular-nums">{resolved.length}<span className="text-sm font-semibold text-white/70">/25</span></p>
           </div>
@@ -390,7 +390,7 @@ export default function OrakelView({ onBack }: { onBack: () => void }) {
       </div>
 
       {/* Bet list */}
-      <div className="grid gap-2">
+      <div className="grid gap-2 overflow-x-clip">
         {filteredBets.map((bet) => {
           const q = QUESTIONS[bet.idx]!;
           const myBet = (player === "Jan" ? bet.janBet : bet.lucaBet) as BetValue;

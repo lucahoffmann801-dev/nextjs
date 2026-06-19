@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import PixelArtView from "./pixel-art-view";
+import SoundscapeView from "./soundscape-view";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type GameId = "krikri" | "trivia" | "distance" | "chaos" | "mindmatch";
+type GameId = "krikri" | "trivia" | "distance" | "chaos" | "mindmatch" | "pixel" | "soundscape";
 type Player = "Jan" | "Luca";
 type AppScreen = "lobby" | GameId;
 
@@ -1669,7 +1671,9 @@ function ChaosGame({ onBack }: { onBack: () => void }) {
 // ─── GAME LOBBY ───────────────────────────────────────────────────────────────
 
 const games: { id: GameId; emoji: string; title: string; desc: string; tag: string }[] = [
-  { id: "chaos",     emoji: "🎭", title: "Improv Chaos",  desc: "Absurdes Kreta-Szenario, 45 Sek. schreiben, dann voten. 75 Situationen.", tag: "🔥 Neu" },
+  { id: "pixel",      emoji: "🎨", title: "Pixel Art",     desc: "Gemeinsam ein Bild aufbauen — Frangokastello, Kri-Kri oder einfach frei malen.", tag: "✨ Neu" },
+  { id: "soundscape", emoji: "🎵", title: "Kreta Klangwelt", desc: "Mischt eure eigene Kreta-Atmosphäre: Wellen, Zikaden, Taverna-Musik und mehr.", tag: "✨ Neu" },
+  { id: "chaos",     emoji: "🎭", title: "Improv Chaos",  desc: "Absurdes Kreta-Szenario, 45 Sek. schreiben, dann voten. 75 Situationen.", tag: "🔥 Heiß" },
   { id: "mindmatch", emoji: "🧠", title: "Mind Match",    desc: "Beide tippen gleichzeitig — ohne zu reden. Wie gut kennt ihr euch?", tag: "Kooperativ" },
   { id: "krikri",    emoji: "🐐", title: "Kri-Kri Blitz", desc: "Reaktions-Duell. Warte auf das Kri-Kri und tippe schneller als der Berg.", tag: "Reaktion" },
   { id: "trivia",    emoji: "🏛️", title: "Kreta Trivia",  desc: "15 Fragen über Kreta, Knossos, Dakos und eure Reise.", tag: "Wissen" },
@@ -1691,7 +1695,7 @@ function GameLobby({ onBack, onPlay }: { onBack: () => void; onPlay: (id: GameId
         <p className="relative z-10 mt-8 text-xs font-black uppercase tracking-[0.2em] text-[#9de7dc]">Mini Games · Kreta Edition</p>
         <h2 className="relative z-10 mt-2 text-4xl font-black leading-none sm:text-5xl">Game Hub</h2>
         <p className="relative z-10 mt-3 max-w-xl text-base font-semibold leading-7 text-white/80">
-          Vier Spiele für Jan &amp; Luca – solo oder live auf zwei Handys via Supabase.
+          7 Spiele für Jan &amp; Luca – solo, kooperativ und live auf zwei Handys.
         </p>
       </section>
 
@@ -1724,10 +1728,12 @@ function GameLobby({ onBack, onPlay }: { onBack: () => void; onPlay: (id: GameId
 export default function MiniGamesView({ onBack }: { onBack: () => void }) {
   const [screen, setScreen] = useState<AppScreen>("lobby");
 
-  if (screen === "chaos")     return <ChaosGame     onBack={() => setScreen("lobby")} />;
-  if (screen === "mindmatch") return <MindMatchGame onBack={() => setScreen("lobby")} />;
-  if (screen === "krikri")    return <KriKriGame    onBack={() => setScreen("lobby")} />;
-  if (screen === "trivia")    return <TriviaGame    onBack={() => setScreen("lobby")} />;
-  if (screen === "distance")  return <DistanceGame  onBack={() => setScreen("lobby")} />;
+  if (screen === "pixel")      return <PixelArtView   onBack={() => setScreen("lobby")} />;
+  if (screen === "soundscape") return <SoundscapeView onBack={() => setScreen("lobby")} />;
+  if (screen === "chaos")      return <ChaosGame      onBack={() => setScreen("lobby")} />;
+  if (screen === "mindmatch")  return <MindMatchGame  onBack={() => setScreen("lobby")} />;
+  if (screen === "krikri")     return <KriKriGame     onBack={() => setScreen("lobby")} />;
+  if (screen === "trivia")     return <TriviaGame     onBack={() => setScreen("lobby")} />;
+  if (screen === "distance")   return <DistanceGame   onBack={() => setScreen("lobby")} />;
   return <GameLobby onBack={onBack} onPlay={setScreen} />;
 }
