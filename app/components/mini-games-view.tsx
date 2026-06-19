@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type GameId = "krikri" | "trivia" | "distance";
+type GameId = "krikri" | "trivia" | "distance" | "chaos";
 type Player = "Jan" | "Luca";
 type AppScreen = "lobby" | GameId;
 
@@ -895,11 +895,470 @@ function DistanceGame({ onBack }: { onBack: () => void }) {
   );
 }
 
+// ─── IMPROV CHAOS ────────────────────────────────────────────────────────────
+
+const CHAOS_SCENARIOS = [
+  // Strand & Meer
+  "Jan fällt beim Schnorcheln auf eine schlafende Meeresschildkröte. Seine Entschuldigung an das Tier?",
+  "Luca hat Olivenöl statt Sonnencreme aufgetragen. Er sieht jetzt aus wie…",
+  "Ein Kri-Kri klaut Jan direkt das Sandwich aus der Hand. Jans epische Reaktion?",
+  "Das Meer hat 28°C, aber Jan behauptet, es sei 'viel zu kalt'. Lucas Diagnose:",
+  "Luca findet beim Schnorcheln etwas Seltsames am Meeresgrund. Es ist…",
+  "Jan versucht cool aus dem Meer zu laufen wie in einem Film. Was geht schief?",
+  "Eine Qualle hat Luca am Fuß erwischt. Jans medizinischer Rat:",
+  "Jan baut eine Sandburg. Luca beschreibt sie in seiner Tripadvisor-Rezension:",
+  // Essen & Trinken
+  "Der Kellner bringt schon den 5. unbestellten Raki. Jans Geheimtaktik?",
+  "Luca bestellt auf Griechisch, bekommt aber etwas völlig Unerwartetes. Was ist auf dem Teller?",
+  "Das Restaurant hat nur noch eine Portion Dakos. Wie lösen Jan und Luca den Konflikt?",
+  "Der Frappé ist so stark, dass Jan 4 Stunden lang…",
+  "Luca isst versehentlich einen rohen Oktopustentakel. Seine 5-Sterne-Bewertung: 'Köstlich, weil…'",
+  "Der Wirt schenkt selbstgebrannten Raki ein. Das Glas dampft. Jan sagt:",
+  "Eine Ziege sitzt in der Taverna am Nebentisch und bestellt sich…",
+  "Jan versucht 'Rechnung bitte' auf Griechisch. Was kommt raus?",
+  "Luca erklärt dem Wirt seinen Allergien auf Griechisch. Das Ergebnis:",
+  "Der Gyros schmeckt so gut, dass Jan eine Liebeserklärung schreibt. Sie geht:",
+  // Transport & Navigation
+  "Das Mietauto hat keine Klimaanlage, 43°C. Die Jahrhunderterfindung von Jan und Luca?",
+  "Jan navigiert, Luca fährt. Eine Schafherde blockiert komplett die Straße. Jans Lösung?",
+  "Die letzte Fähre ist ohne sie abgefahren. Ihr epischer Notfallplan für die Nacht in Sfakia?",
+  "Luca parkt das Auto auf sehr kreative Weise. Jan beschreibt den Parkvorgang:",
+  "Jans Mietrad hat keine Bremsen mehr. Was schreit er bergab?",
+  "Jan und Luca sind seit 2 Stunden auf einer Straße, die laut Maps gar nicht existiert. Luca sagt:",
+  "Das Mietmoped stirbt genau auf dem Gipfelpass. Jan und Luca verhandeln mit…",
+  // Hotel & Alltag
+  "Die Klimaanlage klingt wie ein sterbender Esel auf einem Schiff. Lucas Einschlaf-Trick?",
+  "Jan entdeckt eine Eidechse im Badezimmer und benennt sie sofort. Name und Lebensgeschichte?",
+  "Das Hotel-Bett ist so hart, dass Jan morgens…",
+  "Die Dusche hat zwei Temperaturen: Magma und Antarktis. Luca entwickelt eine Technik:",
+  "Der Vermieter kommt morgens unangekündigt vorbei. Jan ist noch im Schlaf. Luca erklärt:",
+  // Kulturelles
+  "Jan lernt Griechisch und sagt dem alten Mann im Café versehentlich etwas über Ziegen. Der Mann:",
+  "Luca kauft das kretischste Souvenir der Welt. Es ist…",
+  "Beim Knossos-Besuch behauptet Jan, er sei in einem früheren Leben… gewesen.",
+  "Der Reiseführer erklärt die Minoer. Lucas Frage ist so absurd, dass die Gruppe…",
+  "Jan macht ein Selfie vor dem venezianischen Hafen. Der perfekte Instagram-Caption?",
+  "Luca betritt eine Kirche aus Versehen in Badeshorts. Die Reaktion der Ortsbewohner:",
+  // Sport & Abenteuer
+  "Samaria-Schlucht, km 13, 39°C. Jan will aufgeben. Lucas Motivationsrede?",
+  "Luca will von einer 7-Meter-Klippe springen. Sein innerer Monolog kurz vor dem Absprung?",
+  "Jan und Luca mieten Kajaks. Nach 10 Minuten dreht sich Jans Kajak nur noch im Kreis. Luca erklärt:",
+  "Luca versucht Windsurfen. Das Segel ist dreimal so groß wie er. Was schreit er zu Jan?",
+  "Jan beschließt bei der Begegnung mit echten Kri-Kri-Bergziegen, eine davon…",
+  // Zu zweit
+  "Jan und Luca streiten 45 Minuten darüber, wo sie Mittag essen. Die finale Einigung heißt:",
+  "Es gibt nur eine gute Strandliege. Jan und Luca einigen sich auf System:",
+  "Luca schläft bis 12. Jan hat seitdem: 3 Wanderungen, 2 Frühstücke, und…",
+  "Jan fotografiert ALLES. Tag 1: 847 Fotos. 340 davon zeigen ausschließlich…",
+  "Lucas Sonnenbrand ist so spektakulär, dass Jan ihn beschreibt als…",
+  "Jan und Luca bei 40°C auf der Dachterrasse. Jans Lebensweisheit Nr. 3:",
+  "Luca hat das Tagesbudget für Tag 1 bereits aufgebraucht. Sein Alibi?",
+  "Jan will um 5:30 für den Sonnenaufgang aufstehen. Lucas Gegenvorschlag?",
+  "Luca vermisst sein Handtuch. Drei Stunden später stellt sich raus: Es war die ganze Zeit…",
+  "Jan kauft ein lokales Mitbringsel für seine Familie. Zuhause angekommen ist es…",
+  // Absurd & Wild
+  "Ein Kri-Kri wird das inoffizielle Maskottchen der Reise. Sein Name und sein größter Traum?",
+  "Das Dorf hat null Handyempfang. Jan nach 6 Stunden ohne Internet:",
+  "Ein griechischer Opa lädt Jan und Luca spontan zu seiner Hochzeit ein. Was passiert dann?",
+  "Jan findet raus, dass ein Frappé im Dorf nur 50 Cent kostet. Sein neuer Lebensplan:",
+  "Luca lernt von einem Fischer, wie man Tintenfische fängt. Erster Versuch endet mit…",
+  "Mitternacht, Raki-Stunde 3. Jan und Luca gründen spontan eine GmbH. Name und Produkt?",
+  "Jan und Luca erfinden ein neues kretisches Traditionsgericht. Hauptzutaten und Name?",
+  "Der Vermieter zeigt ihnen stolz das 'besondere Extra' der Wohnung. Es ist…",
+  "Jan schreibt eine 5-Sterne-Bewertung für das Hotel. Erster Satz:",
+  "Luca entdeckt, dass Jan heimlich jeden Abend… macht.",
+  "Ein Strandverkäufer bietet 'echte antike Münzen' an. Jan verhandelt. Am Ende hat er…",
+  "Lucas Kreta-Urlaubsbuch: Titel und Klappentext in einem Satz.",
+  "Tag 8. Jan und Luca canceln die Heimreise spontan. Der echte Grund:",
+  "Das Kri-Kri-Maskottchen hat sich im Koffer versteckt. Zuhause angekommen…",
+  "Jan beschreibt den perfekten Kreta-Tag in einer WhatsApp an seine Mutter:",
+  "Luca hat heimlich ein Tagebuch geführt. Erster Eintrag: 'Tag 1. Jan hat schon wieder…'",
+  "Jan versucht mit einer Meeresschildkröte zu kommunizieren. Was sagt er ihr?",
+  "Lucas Theorie, warum kretisches Brot so viel besser schmeckt als deutsches?",
+  "Jan und Luca finden eine Flaschenpost am Strand. Die Botschaft lautet:",
+  "Der Wanderguide in der Samaria-Schlucht gibt ihnen Spitznamen. Jan heißt jetzt '...' weil...",
+  "Luca behauptet, in Frangokastello ein Geist gesehen zu haben. Es sah aus wie…",
+  "Jan kocht zum ersten Mal Dakos nach. Das Endergebnis wird von Luca beschrieben als…",
+  "Das Wlan-Passwort im Restaurant ist 40 Zeichen lang. Jan tippt es ab. Zweimal. Dann:",
+  "Luca kauft auf dem Markt etwas, ohne zu wissen was es ist. Zuhause stellt sich raus:",
+  "Jan muss auf Kreta zum Arzt. Sein Griechisch reicht für die Diagnose: '…'",
+  "Luca erklärt Jan zum ersten Mal, was 'Urlaub machen' für ihn bedeutet. Es klingt nach:",
+];
+
+const CHAOS_ROUNDS = 10;
+const WRITING_SECS = 45;
+
+interface ChaosState {
+  round: number;
+  scenarios: number[];
+  phase: "writing" | "voting" | "reveal" | "done";
+  answers: Record<string, string>;
+  votes: Record<string, string>;
+  scores: Record<string, number>;
+  timerStart: number;
+}
+
+// A-player is Jan on even rounds, Luca on odd rounds
+function chaosAPlayer(round: number): Player { return round % 2 === 0 ? "Jan" : "Luca"; }
+
+function ChaosGame({ onBack }: { onBack: () => void }) {
+  const [screen, setScreen] = useState<"menu" | "mp_setup" | "play">("menu");
+  const [mpCode, setMpCode] = useState("");
+  const [mpRole, setMpRole] = useState<"host" | "guest">("host");
+  const [mpPlayer, setMpPlayer] = useState<Player>("Jan");
+  const [draft, setDraft] = useState("");
+  const [timeLeft, setTimeLeft] = useState(WRITING_SECS);
+  const advancedKey = useRef("");
+  const { session } = useMpSession(screen === "play", mpCode);
+
+  const mpState: ChaosState | null =
+    session?.state && Object.keys(session.state).length
+      ? (session.state as unknown as ChaosState)
+      : null;
+
+  // Countdown
+  useEffect(() => {
+    if (!mpState || mpState.phase !== "writing") return;
+    const start = mpState.timerStart;
+    function tick() { setTimeLeft(Math.max(0, Math.ceil(WRITING_SECS - (Date.now() - start) / 1000))); }
+    tick();
+    const id = setInterval(tick, 400);
+    return () => clearInterval(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mpState?.round, mpState?.phase, mpState?.timerStart]);
+
+  // Host: auto-advance phases
+  useEffect(() => {
+    if (!mpState || !session || mpRole !== "host") return;
+    const key = `${mpState.round}:${mpState.phase}`;
+    if (advancedKey.current === key) return;
+
+    if (mpState.phase === "writing") {
+      const both = Object.keys(mpState.answers).length >= 2;
+      const elapsed = (Date.now() - mpState.timerStart) / 1000;
+      if (both || elapsed >= WRITING_SECS) {
+        advancedKey.current = key;
+        void patchSession(session.id, { state: { ...mpState, phase: "voting" } });
+      }
+    }
+    if (mpState.phase === "voting") {
+      const both = Object.keys(mpState.votes).length >= 2;
+      if (both) {
+        advancedKey.current = key;
+        const s = { ...mpState.scores };
+        Object.values(mpState.votes).forEach((p) => { s[p] = (s[p] ?? 0) + 1; });
+        void patchSession(session.id, { state: { ...mpState, phase: "reveal", scores: s } });
+      }
+    }
+  }, [mpState, session, mpRole]);
+
+  function handleMpStart(code: string, role: "host" | "guest", player: Player) {
+    setMpCode(code); setMpRole(role); setMpPlayer(player); setDraft("");
+    setScreen("play");
+    if (role === "host") {
+      const idxs = [...Array(CHAOS_SCENARIOS.length).keys()];
+      for (let i = idxs.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [idxs[i], idxs[j]] = [idxs[j]!, idxs[i]!];
+      }
+      void patchSession(code, {
+        state: {
+          round: 0,
+          scenarios: idxs.slice(0, CHAOS_ROUNDS),
+          phase: "writing",
+          answers: {},
+          votes: {},
+          scores: { Jan: 0, Luca: 0 },
+          timerStart: Date.now(),
+        } as ChaosState,
+      });
+    }
+  }
+
+  async function submitAnswer() {
+    if (!mpState || !session || !draft.trim()) return;
+    const a = { ...mpState.answers, [mpPlayer]: draft.trim() };
+    await patchSession(session.id, { state: { ...mpState, answers: a } });
+    setDraft("");
+  }
+
+  async function submitVote(votedFor: Player) {
+    if (!mpState || !session || mpState.votes[mpPlayer]) return;
+    await patchSession(session.id, { state: { ...mpState, votes: { ...mpState.votes, [mpPlayer]: votedFor } } });
+  }
+
+  async function nextRound() {
+    if (!mpState || !session || mpRole !== "host") return;
+    const next = mpState.round + 1;
+    if (next >= CHAOS_ROUNDS) {
+      await patchSession(session.id, { state: { ...mpState, phase: "done" } });
+    } else {
+      await patchSession(session.id, {
+        state: { ...mpState, round: next, phase: "writing", answers: {}, votes: {}, timerStart: Date.now() },
+      });
+    }
+    setDraft("");
+  }
+
+  const backBtn = (label: string, onClick: () => void) => (
+    <button className="min-h-10 rounded-full border border-[#cfe0d7] bg-white/60 px-4 text-sm font-black text-[#125f68]" onClick={onClick} type="button">{label}</button>
+  );
+
+  // ── menu ──
+  if (screen === "menu") {
+    return (
+      <div className="grid gap-5">
+        <div className="flex items-center gap-3">
+          {backBtn("← Games", onBack)}
+          <span className="text-xl font-black text-[#0e302e]">Improv Chaos 🎭</span>
+        </div>
+        <div className="ios-glass-card rounded-[28px] p-5">
+          <p className="text-sm font-semibold leading-6 text-[#5b6f68]">
+            Ein absurdes Kreta-Szenario erscheint. Beide tippen gleichzeitig eine witzige Antwort – 45 Sekunden.
+            Dann wird gevoted. Wer am meisten Stimmen sammelt, gewinnt. 10 Runden aus über 70 Szenarien.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2 text-xs font-black">
+            {["🎭 70+ Szenarien", "⏱ 45 Sek. pro Runde", "🗳 Anonymes Voting", "📱 2 Handys"].map((t) => (
+              <span key={t} className="rounded-full bg-[#eff6f2] px-3 py-1.5 text-[#125f68]">{t}</span>
+            ))}
+          </div>
+          <button className="btn-sheen mt-5 min-h-12 w-full rounded-[18px] bg-[#e8344a] font-black text-white" onClick={() => setScreen("mp_setup")} type="button">
+            Chaos starten 🎭
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── mp_setup ──
+  if (screen === "mp_setup") {
+    return (
+      <div className="grid gap-5">
+        <div className="flex items-center gap-3">
+          {backBtn("← Zurück", () => setScreen("menu"))}
+          <span className="text-xl font-black text-[#0e302e]">Multiplayer Setup</span>
+        </div>
+        <div className="ios-glass-card rounded-[28px] p-5">
+          <MpSetup game="chaos" onStart={handleMpStart} />
+        </div>
+      </div>
+    );
+  }
+
+  // ── play: loading ──
+  if (!mpState) {
+    return (
+      <div className="grid gap-5">
+        <div className="flex items-center gap-3">{backBtn("← Games", onBack)}</div>
+        <div className="ios-glass-card flex min-h-[200px] items-center justify-center rounded-[28px]">
+          <p className="font-bold text-[#789087]">Warte auf Spielstart …</p>
+        </div>
+      </div>
+    );
+  }
+
+  const scenario = CHAOS_SCENARIOS[mpState.scenarios[mpState.round] ?? 0] ?? "";
+  const aPlayer = chaosAPlayer(mpState.round);
+  const bPlayer: Player = aPlayer === "Jan" ? "Luca" : "Jan";
+  const otherPlayer: Player = mpPlayer === "Jan" ? "Luca" : "Jan";
+  const roundLabel = `${mpState.round + 1} / ${CHAOS_ROUNDS}`;
+
+  const RoundHeader = () => (
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        {backBtn("← Games", onBack)}
+        <span className="font-black text-[#789087]">Runde {roundLabel}</span>
+      </div>
+      <span className="text-sm font-black text-[#e8344a]">
+        {mpState.scores.Jan ?? 0} : {mpState.scores.Luca ?? 0}
+      </span>
+    </div>
+  );
+
+  // ── done ──
+  if (mpState.phase === "done") {
+    const j = mpState.scores.Jan ?? 0;
+    const l = mpState.scores.Luca ?? 0;
+    const winner = j === l ? "Unentschieden 🤝" : j > l ? "Jan 🏆" : "Luca 🏆";
+    return (
+      <div className="grid gap-5">
+        <div className="flex items-center gap-3">{backBtn("← Games", onBack)}</div>
+        <div className="ios-glass-card rounded-[28px] p-6 text-center">
+          <p className="text-6xl">🎭</p>
+          <p className="mt-3 text-xs font-black uppercase tracking-[0.2em] text-[#789087]">Game Over</p>
+          <p className="mt-2 text-4xl font-black text-[#0e302e]">{winner}</p>
+          <p className="mt-2 font-bold text-[#789087]">Jan {j} · Luca {l} Punkte</p>
+          <p className="mt-4 text-sm font-semibold text-[#789087]">
+            {j > l ? "Jan ist das kretischste Komik-Talent." : l > j ? "Luca hat Kreta im Blut." : "Unschlagbar zusammen. Wie immer."}
+          </p>
+          <button className="btn-sheen mt-6 min-h-12 w-full rounded-[18px] bg-[#e8344a] font-black text-white" onClick={() => setScreen("menu")} type="button">
+            Nochmal
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── writing ──
+  if (mpState.phase === "writing") {
+    const myAnswer = mpState.answers[mpPlayer];
+    const otherAnswered = !!mpState.answers[otherPlayer];
+    const pct = timeLeft / WRITING_SECS;
+    const urgent = timeLeft <= 10;
+    return (
+      <div className="grid gap-4">
+        <RoundHeader />
+        {/* Timer bar */}
+        <div className="h-2 w-full overflow-hidden rounded-full bg-[#d7e3dc]">
+          <div
+            className={["h-full rounded-full transition-all duration-500", urgent ? "bg-[#e8344a]" : "bg-[#125f68]"].join(" ")}
+            style={{ width: `${pct * 100}%` }}
+          />
+        </div>
+        <div className="ios-glass-card rounded-[28px] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <p className="text-xl font-black leading-snug text-[#0e302e]">{scenario}</p>
+            <span className={["shrink-0 rounded-full px-3 py-1 text-sm font-black tabular-nums", urgent ? "bg-[#fee2e2] text-[#e8344a]" : "bg-[#eff6f2] text-[#125f68]"].join(" ")}>
+              {timeLeft}s
+            </span>
+          </div>
+
+          {!myAnswer ? (
+            <div className="mt-4 grid gap-3">
+              <textarea
+                autoFocus
+                className="min-h-[120px] w-full resize-none rounded-[18px] border border-[#cfe0d7] bg-white p-4 text-base font-semibold text-[#0e302e] outline-none focus:border-[#e8344a] placeholder:text-[#b0c4bb]"
+                maxLength={200}
+                placeholder="Deine witzigste Antwort …"
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && e.metaKey) void submitAnswer(); }}
+              />
+              <button
+                className={["btn-sheen min-h-12 w-full rounded-[18px] font-black text-white transition", draft.trim() ? "bg-[#e8344a]" : "bg-[#cfe0d7] text-[#789087]"].join(" ")}
+                disabled={!draft.trim()}
+                onClick={() => void submitAnswer()}
+                type="button"
+              >
+                Absenden ✓
+              </button>
+              <p className="text-center text-xs font-semibold text-[#b0c4bb]">⌘↩ zum schnellen Absenden</p>
+            </div>
+          ) : (
+            <div className="mt-4 rounded-[18px] bg-[#eff6f2] p-4">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-[#125f68]">Deine Antwort</p>
+              <p className="mt-1 font-semibold text-[#0e302e]">"{myAnswer}"</p>
+              <p className="mt-3 text-sm font-semibold text-[#789087]">
+                {otherAnswered ? "✓ Beide haben geantwortet – Voting startet gleich …" : `⏳ Warte auf ${otherPlayer} …`}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── voting ──
+  if (mpState.phase === "voting") {
+    const myVote = mpState.votes[mpPlayer];
+    const ansA = mpState.answers[aPlayer] ?? "– keine Antwort –";
+    const ansB = mpState.answers[bPlayer] ?? "– keine Antwort –";
+    return (
+      <div className="grid gap-4">
+        <RoundHeader />
+        <div className="ios-glass-card rounded-[28px] p-4">
+          <p className="text-center text-xs font-black uppercase tracking-[0.18em] text-[#789087]">Welche Antwort ist witziger?</p>
+          <p className="mt-2 text-center text-sm font-semibold leading-snug text-[#0e302e]">{scenario}</p>
+        </div>
+        {!myVote ? (
+          <div className="grid gap-3">
+            {([["A", aPlayer, ansA], ["B", bPlayer, ansB]] as [string, Player, string][]).map(([label, player, ans]) => (
+              <button
+                key={label}
+                className="ios-glass-card card-interactive rounded-[24px] p-5 text-left"
+                onClick={() => void submitVote(player)}
+                type="button"
+              >
+                <span className="inline-block rounded-full bg-[#e8344a] px-2.5 py-0.5 text-xs font-black text-white">Antwort {label}</span>
+                <p className="mt-3 text-lg font-semibold leading-snug text-[#0e302e]">"{ans}"</p>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="ios-glass-card rounded-[28px] p-5 text-center">
+            <p className="text-2xl">🗳️</p>
+            <p className="mt-2 font-black text-[#0e302e]">Vote abgegeben!</p>
+            <p className="mt-1 text-sm font-semibold text-[#789087]">Warte auf {otherPlayer} …</p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── reveal ──
+  if (mpState.phase === "reveal") {
+    const ansA = mpState.answers[aPlayer] ?? "–";
+    const ansB = mpState.answers[bPlayer] ?? "–";
+    const janVote = mpState.votes.Jan;
+    const lucaVote = mpState.votes.Luca;
+    const janPts = [janVote, lucaVote].filter((v) => v === "Jan").length;
+    const lucaPts = [janVote, lucaVote].filter((v) => v === "Luca").length;
+    const roundWinner = janPts === lucaPts ? null : janPts > lucaPts ? "Jan" : "Luca";
+    return (
+      <div className="grid gap-4">
+        <RoundHeader />
+        <div className="ios-glass-card rounded-[28px] p-5">
+          <p className="text-center text-xs font-black uppercase tracking-[0.18em] text-[#789087]">Auflösung</p>
+          <p className="mt-2 text-center text-sm font-semibold leading-snug text-[#0e302e]">{scenario}</p>
+        </div>
+        <div className="grid gap-3">
+          {([["A", aPlayer, ansA], ["B", bPlayer, ansB]] as [string, Player, string][]).map(([label, player, ans]) => {
+            const ptsThisRound = [janVote, lucaVote].filter((v) => v === player).length;
+            const won = roundWinner === player;
+            return (
+              <div key={label} className={["rounded-[24px] p-5", won ? "bg-[#0e5558] text-white" : "bg-[#eff6f2] text-[#0e302e]"].join(" ")}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className={["rounded-full px-2.5 py-0.5 text-xs font-black", won ? "bg-white/20 text-white" : "bg-[#e8344a] text-white"].join(" ")}>Antwort {label}</span>
+                    <span className="font-black">{player}</span>
+                  </div>
+                  <span className={["text-lg font-black", won ? "text-[#9de7dc]" : "text-[#789087]"].join(" ")}>
+                    {won ? "👑 " : ""}{ptsThisRound} Pkt.
+                  </span>
+                </div>
+                <p className={["mt-3 text-base font-semibold leading-snug", won ? "text-white/90" : ""].join(" ")}>"{ans}"</p>
+                <p className={["mt-2 text-xs font-semibold", won ? "text-white/60" : "text-[#789087]"].join(" ")}>
+                  Jan → {janVote ?? "?"} · Luca → {lucaVote ?? "?"}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+        <div className="rounded-[20px] bg-[#fef3c7] p-4 text-center">
+          <p className="font-black text-[#7a4b00]">
+            {roundWinner ? `${roundWinner} gewinnt die Runde!` : "Unentschieden – beide witzig!"} · Stand: Jan {mpState.scores.Jan ?? 0} · Luca {mpState.scores.Luca ?? 0}
+          </p>
+        </div>
+        {mpRole === "host" ? (
+          <button className="btn-sheen min-h-12 w-full rounded-[18px] bg-[#e8344a] font-black text-white" onClick={() => void nextRound()} type="button">
+            {mpState.round + 1 >= CHAOS_ROUNDS ? "Ergebnis ansehen 🏆" : "Nächste Runde →"}
+          </button>
+        ) : (
+          <p className="text-center text-sm font-semibold text-[#789087]">Warte auf Host …</p>
+        )}
+      </div>
+    );
+  }
+
+  return null;
+}
+
 // ─── GAME LOBBY ───────────────────────────────────────────────────────────────
 
 const games: { id: GameId; emoji: string; title: string; desc: string; tag: string }[] = [
-  { id: "krikri", emoji: "🐐", title: "Kri-Kri Blitz", desc: "Reaktions-Duell. Warte auf das Kri-Kri und tippe schneller als der Berg.", tag: "Reaktion" },
-  { id: "trivia", emoji: "🏛️", title: "Kreta Trivia", desc: "15 Fragen über Kreta, Knossos, Dakos und eure Reise. Wer kennt die Insel?", tag: "Wissen" },
+  { id: "chaos",    emoji: "🎭", title: "Improv Chaos",  desc: "Absurde Kreta-Szenarien, 45 Sek. schreiben, dann voten. Aus über 70 Situationen.", tag: "🔥 NEU" },
+  { id: "krikri",   emoji: "🐐", title: "Kri-Kri Blitz", desc: "Reaktions-Duell. Warte auf das Kri-Kri und tippe schneller als der Berg.", tag: "Reaktion" },
+  { id: "trivia",   emoji: "🏛️", title: "Kreta Trivia",  desc: "15 Fragen über Kreta, Knossos, Dakos und eure Reise. Wer kennt die Insel?", tag: "Wissen" },
   { id: "distance", emoji: "🧭", title: "Insel-Kompass", desc: "Schätze die Luftlinie von eurem Hotel zu 15 Orten auf Kreta.", tag: "Entfernung" },
 ];
 
@@ -918,7 +1377,7 @@ function GameLobby({ onBack, onPlay }: { onBack: () => void; onPlay: (id: GameId
         <p className="relative z-10 mt-8 text-xs font-black uppercase tracking-[0.2em] text-[#9de7dc]">Mini Games · Kreta Edition</p>
         <h2 className="relative z-10 mt-2 text-4xl font-black leading-none sm:text-5xl">Game Hub</h2>
         <p className="relative z-10 mt-3 max-w-xl text-base font-semibold leading-7 text-white/80">
-          Drei Spiele für Jan & Luca – solo oder live auf zwei Handys via Supabase.
+          Vier Spiele für Jan &amp; Luca – solo oder live auf zwei Handys via Supabase.
         </p>
       </section>
 
@@ -951,8 +1410,9 @@ function GameLobby({ onBack, onPlay }: { onBack: () => void; onPlay: (id: GameId
 export default function MiniGamesView({ onBack }: { onBack: () => void }) {
   const [screen, setScreen] = useState<AppScreen>("lobby");
 
-  if (screen === "krikri") return <KriKriGame onBack={() => setScreen("lobby")} />;
-  if (screen === "trivia") return <TriviaGame onBack={() => setScreen("lobby")} />;
+  if (screen === "chaos")    return <ChaosGame    onBack={() => setScreen("lobby")} />;
+  if (screen === "krikri")   return <KriKriGame   onBack={() => setScreen("lobby")} />;
+  if (screen === "trivia")   return <TriviaGame   onBack={() => setScreen("lobby")} />;
   if (screen === "distance") return <DistanceGame onBack={() => setScreen("lobby")} />;
   return <GameLobby onBack={onBack} onPlay={setScreen} />;
 }
