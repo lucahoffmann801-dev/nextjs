@@ -2759,6 +2759,27 @@ function ChaosGame({ onBack }: { onBack: () => void }) {
       ? (session.state as unknown as ChaosState)
       : null;
 
+  // Shuffle option order per player/round/scenario so it never feels static,
+  // without needing to sync order between host and guest.
+  // Must run unconditionally on every render (Rules of Hooks), so it lives
+  // here, before any of the screen/mpState early returns below, with safe
+  // fallbacks for when mpState is still null (loading).
+  const scenarioIdx = mpState?.scenarios[mpState.round] ?? 0;
+  const scenarioData = CHAOS_SCENARIOS[scenarioIdx] ?? CHAOS_SCENARIOS[0]!;
+  const shuffledOptions = useMemo(() => {
+    const seed = `${scenarioIdx}:${mpState?.round ?? 0}:${mpPlayer}`;
+    let h = 0;
+    for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+    const arr = [...scenarioData.options];
+    for (let i = arr.length - 1; i > 0; i--) {
+      h = (h * 1103515245 + 12345) >>> 0;
+      const j = h % (i + 1);
+      [arr[i], arr[j]] = [arr[j]!, arr[i]!];
+    }
+    return arr;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scenarioIdx, mpState?.round, mpPlayer]);
+
   // Countdown
   useEffect(() => {
     if (!mpState || mpState.phase !== "writing") return;
@@ -2898,29 +2919,11 @@ function ChaosGame({ onBack }: { onBack: () => void }) {
     );
   }
 
-  const scenarioIdx = mpState.scenarios[mpState.round] ?? 0;
-  const scenarioData = CHAOS_SCENARIOS[scenarioIdx] ?? CHAOS_SCENARIOS[0]!;
   const scenario = scenarioData.text;
   const aPlayer = chaosAPlayer(mpState.round);
   const bPlayer: Player = aPlayer === "Jan" ? "Luca" : "Jan";
   const otherPlayer: Player = mpPlayer === "Jan" ? "Luca" : "Jan";
   const roundLabel = `${mpState.round + 1} / ${CHAOS_ROUNDS}`;
-
-  // Shuffle option order per player/round/scenario so it never feels static,
-  // without needing to sync order between host and guest.
-  const shuffledOptions = useMemo(() => {
-    const seed = `${scenarioIdx}:${mpState.round}:${mpPlayer}`;
-    let h = 0;
-    for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
-    const arr = [...scenarioData.options];
-    for (let i = arr.length - 1; i > 0; i--) {
-      h = (h * 1103515245 + 12345) >>> 0;
-      const j = h % (i + 1);
-      [arr[i], arr[j]] = [arr[j]!, arr[i]!];
-    }
-    return arr;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scenarioIdx, mpState.round, mpPlayer]);
 
   const RoundHeader = () => (
     <div className="flex items-center justify-between">
@@ -3189,4 +3192,5 @@ export default function MiniGamesView({ onBack }: { onBack: () => void }) {
   if (screen === "distance")    return <DistanceGame    onBack={() => setScreen("lobby")} />;
   return <GameLobby onBack={onBack} onPlay={setScreen} />;
 }
+
 
