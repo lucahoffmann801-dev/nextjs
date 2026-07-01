@@ -111,11 +111,12 @@ function MpSetup({ game, onStart }: MpSetupProps) {
       if (!res.ok) { setJoinErr("Session nicht gefunden."); return; }
       const s = await res.json() as GameSession;
       if (s.guest) { setJoinErr("Session ist bereits voll."); return; }
-      // join as guest
-      await patchSession(upper, { guest: player === "Jan" ? "Luca" : "Jan" });
+      if (s.host === player) { setJoinErr(`${player} ist bereits Host dieser Session.`); return; }
+      // join as guest with the actually selected player, not the inverse
+      await patchSession(upper, { guest: player });
       setCode(upper);
       setRole("active");
-      onStart(upper, "guest", player === "Jan" ? "Luca" : "Jan");
+      onStart(upper, "guest", player);
     } catch {
       setJoinErr("Verbindungsfehler.");
     }
