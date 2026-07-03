@@ -4,10 +4,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import PixelArtView from "./pixel-art-view";
 import SoundscapeView from "./soundscape-view";
 import SeeschlachtView from "./seeschlacht-view";
+import StickerBattleView from "./sticker-battle-view";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type GameId = "krikri" | "trivia" | "distance" | "chaos" | "mindmatch" | "pixel" | "soundscape" | "seeschlacht";
+type GameId = "krikri" | "trivia" | "distance" | "chaos" | "mindmatch" | "pixel" | "soundscape" | "seeschlacht" | "stickers";
 type Player = "Jan" | "Luca";
 type AppScreen = "lobby" | GameId;
 
@@ -3124,6 +3125,7 @@ function ChaosGame({ onBack }: { onBack: () => void }) {
 // ─── GAME LOBBY ───────────────────────────────────────────────────────────────
 
 const games: { id: GameId; emoji: string; title: string; desc: string; tag: string }[] = [
+  { id: "stickers",    emoji: "⚽️", title: "Sammel-Duell",       desc: "FCK gegen Schalke 04 — sammelt Sticker, +/- für Korrekturen. Läuft immer live mit.", tag: "✨ Neu" },
   { id: "seeschlacht", emoji: "⚓", title: "Kreta Seeschlacht", desc: "Schiffe versenken — Raum-Code, Flotte platzieren, angreifen, gewinnen. Kretisches Seemannsduell.", tag: "✨ Neu" },
   { id: "pixel",       emoji: "🎨", title: "Pixel Art",         desc: "Gemeinsam ein Bild aufbauen — Frangokastello, Kri-Kri oder einfach frei malen.", tag: "✨ Neu" },
   { id: "soundscape",  emoji: "🎵", title: "Kreta Klangwelt",   desc: "Mischt eure eigene Kreta-Atmosphäre: Wellen, Zikaden, Taverna-Musik und mehr.", tag: "✨ Neu" },
@@ -3149,7 +3151,7 @@ function GameLobby({ onBack, onPlay }: { onBack: () => void; onPlay: (id: GameId
         <p className="relative z-10 mt-8 text-xs font-black uppercase tracking-[0.2em] text-[#9de7dc]">Mini Games · Kreta Edition</p>
         <h2 className="relative z-10 mt-2 text-4xl font-black leading-none sm:text-5xl">Game Hub</h2>
         <p className="relative z-10 mt-3 max-w-xl text-base font-semibold leading-7 text-white/80">
-          8 Spiele für Jan &amp; Luca – solo, kooperativ und live auf zwei Handys.
+          9 Spiele für Jan &amp; Luca – solo, kooperativ und live auf zwei Handys.
         </p>
       </section>
 
@@ -3182,6 +3184,7 @@ function GameLobby({ onBack, onPlay }: { onBack: () => void; onPlay: (id: GameId
 export default function MiniGamesView({ onBack }: { onBack: () => void }) {
   const [screen, setScreen] = useState<AppScreen>("lobby");
 
+  if (screen === "stickers")    return <StickerBattleView onBack={() => setScreen("lobby")} />;
   if (screen === "seeschlacht") return <SeeschlachtView onBack={() => setScreen("lobby")} />;
   if (screen === "pixel")       return <PixelArtView    onBack={() => setScreen("lobby")} />;
   if (screen === "soundscape")  return <SoundscapeView  onBack={() => setScreen("lobby")} />;
